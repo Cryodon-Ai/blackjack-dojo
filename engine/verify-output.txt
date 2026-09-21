@@ -1,0 +1,136 @@
+
+==============================================================================
+A. Reference chart — 6 decks, S17, DAS, late surrender, peek, 3:2
+==============================================================================
+row   up: 2 3 4 5 6 7 8 9 T A   engine output (* = differs from published)
+22    P P P P P P H H H H
+33    P P P P P P H H H H
+44    H H H P P H H H H H
+55    D D D D D D D D H H
+66    P P P P P H H H H H
+77    P P P P P P H H H H
+88    P P P P P P P P P P
+99    P P P P P S P P S S
+H5    H H H H H H H H H H
+H6    H H H H H H H H H H
+H7    H H H H H H H H H H
+H8    H H H H H H H H H H
+H9    H D D D D H H H H H
+H10   D D D D D D D D H H
+H11   D D D D D D D D D H
+H12   H H S S S H H H H H
+H13   S S S S S H H H H H
+H14   S S S S S H H H H H
+H15   S S S S S H H H R H
+H16   S S S S S H H R R R
+H17   S S S S S S S S S S
+H18   S S S S S S S S S S
+H19   S S S S S S S S S S
+H20   S S S S S S S S S S
+H21   S S S S S S S S S S
+A2    H H H D D H H H H H
+A3    H H H D D H H H H H
+A4    H H D D D H H H H H
+A5    H H D D D H H H H H
+A6    H D D D D H H H H H
+A7    S D D D D S S H H H
+A8    S S S S S S S S S S
+A9    S S S S S S S S S S
+TT    S S S S S S S S S S
+AA    P P P P P P P P P P
+  6 decks: cells asserted 350   pass 350   fail 0   (5853 ms)
+
+  The published strategy is the same chart for 4-8 decks; re-checking the engine at both ends:
+  4 decks: cells asserted 350   pass 350   fail 0   (5517 ms)
+  8 decks: cells asserted 350   pass 350   fail 0   (5607 ms)
+
+==============================================================================
+B. Structural claims the curriculum makes (checked against the engine, not asserted from memory)
+==============================================================================
+  ok: 17+ always stand; 11- never stand; 12-16 stand vs 2-6 (12 v 2/3 hit); A,A & 8,8 split; T,T stand
+
+  Composition-dependent exceptions in this game (same hard total, different best action by exact cards):
+    hard 12 vs 4  2,10:H 3,9:S 4,8:S 5,7:S
+    hard 15 vs T  5,10:R 6,9:R 7,8:H
+  (The chart cell is the probability-weighted total-dependent action; these are the known near-ties.)
+
+==============================================================================
+C. Independent anchors
+==============================================================================
+  insurance (6D, no count info): P(ten)=30.868%  EV=-7.40%   published ~ -7.4%
+  published dealer table, 6 decks S17 (60 numbers): worst abs difference = 5.15e-7
+  published dealer table, 8 decks S17 (60 numbers): worst abs difference = 4.96e-7
+  (The engine also matches an independent from-scratch Python DP at infinite decks; see verification notes.)
+  dealer outcome tables sum to 1.000000000 for every upcard (6D ref)
+
+==============================================================================
+D. Monte Carlo cross-check of the exact solver (independent method, 4-sigma tolerance)
+==============================================================================
+  dealer distributions, 10 upcards x 6 outcomes, 400,000 trials each: worst |z| = 3.03
+  fixed-hand EVs, 1,500,000 trials each (exact vs Monte Carlo, % of wager):
+    stand 16 v T                 exact  -54.095   MC  -54.227 ±0.071   z=1.85
+    double 11 v 6                exact   68.266   MC   68.314 ±0.148   z=0.32
+    double 10 v 9                exact   14.775   MC   15.149 ±0.156   z=2.40
+    stand 12 v 4                 exact  -21.112   MC  -21.245 ±0.080   z=1.67
+    stand A,7 v 9                exact  -18.264   MC  -18.119 ±0.075   z=1.93
+    double A,6 v 3               exact    5.800   MC    5.707 ±0.157   z=0.59
+    stand 20 v A                 exact   65.458   MC   65.510 ±0.060   z=0.86
+    stand 15 v T                 exact  -54.006   MC  -54.176 ±0.071   z=2.39
+    stand 18 v A (ENHC)          exact  -37.481   MC  -37.559 ±0.070   z=1.12
+    double 11 v A (ENHC, H17)    exact  -53.588   MC  -53.644 ±0.152   z=0.37
+    stand 19 v T (1 deck)        exact   10.252   MC   10.262 ±0.080   z=0.13
+
+==============================================================================
+B2. Lesson claims: every strategy statement the curriculum makes, checked against the engine
+==============================================================================
+  52 claims, 370 cells checked across 4 rule sets: all true
+
+==============================================================================
+D2. End-to-end: simulated rounds (round.js + policy) vs the solver's exact house edge
+==============================================================================
+  reference 6D S17 DAS LS peek 3:2     sim   -0.347% ±0.040   exact   -0.331%   z=-0.40  ok
+  8D H17 no-DAS ENHC 6:5               sim   -2.219% ±0.039   exact   -2.257%   z=0.98  ok
+
+==============================================================================
+E. House edge: published exact values, then the rule-cost table the Tier 6 lesson quotes
+==============================================================================
+  E1. absolute house edge vs published exact values (tolerance ±0.004 pp = 0.4 cents per $100 wagered)
+      decks  dealer  DAS     engine%   published%   diff(pp)
+        1    S17    DAS     -0.1808    -0.1839    +0.0031
+        2    S17    DAS      0.1803     0.1779    +0.0024
+        4    S17    DAS      0.3485     0.3471    +0.0014
+        6    S17    DAS      0.4036     0.4026    +0.0010
+        8    S17    DAS      0.4312     0.4304    +0.0008
+        2    S17    noDAS    0.3221     0.3208    +0.0013
+        4    S17    noDAS    0.4900     0.4893    +0.0007
+        6    S17    noDAS    0.5450     0.5445    +0.0005
+        8    S17    noDAS    0.5724     0.5721    +0.0003
+        6    H17    DAS      0.6162     0.6151    +0.0011
+        8    H17    DAS      0.6452     0.6444    +0.0008
+        6    H17    noDAS    0.7603     0.7598    +0.0005
+        8    H17    noDAS    0.7891     0.7888    +0.0003
+      worst |diff| = 0.0031 pp
+
+  E2. 6:5 blackjack, 8 decks: analytic 0.3 x P(BJ & dealer no BJ) = 1.3580 pp;  engine 1.3580 pp
+      The brief quotes 1.39; that matches ~1 deck (1.395), not 6-8 decks (1.358-1.360).
+
+  E3. rule cost from baseline (8D S17 DAS, no RSA, no surrender, peek, 3:2, double any: 0.431% house edge)
+      rule change                        engine    brief      diff   status
+      Dealer hits soft 17              -0.214    -0.22     +0.006  ok
+      No double after split            -0.141    -0.14     -0.001  ok
+      European no hole card            -0.112    -0.11     -0.002  ok
+      Double on 9-11 only              -0.094    -0.09     -0.004  ok
+      Resplit aces allowed             +0.071    +0.08     -0.009  ok
+      Late surrender (vs everything)   +0.076    +0.07     +0.006  ok
+      6 decks  (vs 8)                  +0.028    +0.02     +0.008  ok (unscored)
+      4 decks  (vs 8)                  +0.083    +0.06     +0.023  ok (unscored)
+      2 decks  (vs 8)                  +0.251    +0.19     +0.061  differs from brief — see E1 (unscored)
+      1 deck   (vs 8)                  +0.612    +0.48     +0.132  differs from brief — see E1 (unscored)
+      Five-card Charlie (+1.46 in the brief): not implemented yet — arrives with the Tier 7 variants.
+      "Late surrender vs ten" in the brief: +0.07 corresponds to full late surrender (row above).
+
+  (166 s)
+
+==============================================================================
+RESULT: GREEN — all assertions passed
+==============================================================================
