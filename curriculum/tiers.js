@@ -3,7 +3,7 @@
 
 export const TIERS = [
   {
-    id: 0, title: 'Table Literacy', sub: 'Values, hard vs soft, the sequence of a hand, what each action does, payouts',
+    id: 0, title: 'Table Literacy', sub: 'Optional refresher — skip straight to Tier 1 if you already know values, hard/soft, and what each action does',
     kind: 'quiz', gen: 't0',
     outcome: 'You can narrate a hand out loud, correctly.',
     lessons: [

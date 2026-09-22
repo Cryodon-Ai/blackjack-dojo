@@ -10,7 +10,7 @@ const LS = 'dojo:';
 export const defaultProfile = () => ({
   activeRuleSet: { ...DEFAULT_RULES, decks: 6, surrender: 'late' },   // reference game
   activePresetId: 'reference',
-  tierUnlocked: 0,
+  tierUnlocked: 1,   // Tier 0 (table literacy) is optional review, not a gate — new users start at Tier 1
   tierProgress: {},          // tier -> { streak, best, passed, attempts }
   guided: {},                // tier -> guided-hands completed
   lessonSeen: {},            // tier -> true

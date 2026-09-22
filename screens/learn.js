@@ -15,7 +15,7 @@ import { openRulesEditor } from '../ui/rules-editor.js';
 
 const tierProg = (p, id) => (p.tierProgress && p.tierProgress[id]) || null;
 const isPassed = (p, id) => !!(tierProg(p, id) && tierProg(p, id).passed);
-const isUnlocked = (p, id) => id === 0 || isPassed(p, id - 1) || p.tierUnlocked >= id;
+const isUnlocked = (p, id) => id <= 1 || isPassed(p, id - 1) || p.tierUnlocked >= id;
 
 export default async function learn(el, parts, ctx) {
   const [sub, n, view] = parts;
@@ -38,7 +38,7 @@ async function home(el, ctx) {
   const certs = await store.allCerts();
   const lastCert = certs.length ? certs[certs.length - 1] : null;
   const stale = lastCert && Date.now() - lastCert.date > 30 * 86400000;
-  const firstOpen = TIERS.find((t) => isUnlocked(p, t.id) && !isPassed(p, t.id));
+  const firstOpen = TIERS.find((t) => t.id !== 0 && isUnlocked(p, t.id) && !isPassed(p, t.id));
 
   el.innerHTML = `<h1>Blackjack Dojo</h1>
     <p class="dim" style="margin-top:0">Learn the decisions. Know the real odds.</p>
@@ -54,7 +54,7 @@ async function home(el, ctx) {
     const done = isPassed(p, t.id), open = isUnlocked(p, t.id), cur = firstOpen && firstOpen.id === t.id;
     const g = gateState(tierProg(p, t.id));
     const inner = `<div class="row"><div class="grow"><div class="small dim">Tier ${t.id}</div><h3>${t.title}</h3><div class="small dim">${t.sub}</div>${open && !done && t.kind !== 'cert' && g.n ? `<div class="small due" style="margin-top:4px">Gate: ${g.correct}/${g.n} in your last ${g.n}</div>` : ''}</div>
-      <div>${done ? '<span class="pill ok">passed</span>' : open ? (cur ? '<span class="pill due">next</span>' : '') : '<span class="pill">locked</span>'}</div></div>`;
+      <div>${done ? '<span class="pill ok">passed</span>' : open ? (cur ? '<span class="pill due">next</span>' : t.id === 0 ? '<span class="pill">optional</span>' : '') : '<span class="pill">locked</span>'}</div></div>`;
     return `<div class="node ${done ? 'done' : ''} ${cur ? 'cur' : ''}">${open ? `<a class="card link ${done ? 'ok' : cur ? 'due' : ''}" href="${t.kind === 'cert' ? '#/cert' : `#/learn/t/${t.id}`}">${inner}</a>` : `<div class="card locked">${inner}</div>`}</div>`;
   }).join('');
 }

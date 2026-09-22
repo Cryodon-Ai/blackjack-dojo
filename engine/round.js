@@ -87,10 +87,12 @@ export class Round {
     return this;
   }
 
-  // Dealer draws to completion (only if some hand is still in contention).
-  playDealer() {
+  // Dealer draws to completion (only if some hand is still in contention, unless forced — some side
+  // bets, e.g. Gravity Blackjack's Dealer Bust, need the dealer's exact final card count regardless
+  // of whether every player hand already busted or surrendered).
+  playDealer(force = false) {
     const R = this.rules;
-    const alive = this.hands.some((h) => !h.surrendered && !h.bj && val(h.cards).hard <= 21);
+    const alive = force || this.hands.some((h) => !h.surrendered && !h.bj && val(h.cards).hard <= 21);
     if (alive && !this.dealerBJ) {
       for (;;) {
         const v = val(this.dealer);

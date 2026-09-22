@@ -140,6 +140,21 @@ const T1 = [
     const better = ta.bust > tb.bust ? a : b;
     return mc(`Which dealer upcard is <b>better for you</b> (busts more often): <b>${upLabel(a)}</b> or <b>${upLabel(b)}</b>?`, upLabel(better), [upLabel(better === a ? b : a)], `${upLabel(a)} busts ${pct(ta.bust, 1)}; ${upLabel(b)} busts ${pct(tb.bust, 1)}.`);
   },
+  async () => {
+    const three = shuffle(UPCARDS).slice(0, 3);
+    const bs = await Promise.all(three.map((u) => engine.dealer(LEARN_RULES, u)));
+    const sorted = three.map((u, i) => [u, bs[i].bust]).sort((a, b) => b[1] - a[1]).map(([u]) => u);
+    const correct = sorted.map(upLabel).join(' > ');
+    const perms = [[0, 1, 2], [1, 0, 2], [0, 2, 1], [2, 1, 0]].map((idx) => idx.map((i) => upLabel(three[i])).join(' > '));
+    return mc(`Rank these dealer upcards from <b>most likely to bust</b> to least: <b>${three.map(upLabel).join(', ')}</b>`, correct, perms,
+      sorted.map((u) => `${upLabel(u)} ${pct(bs[three.indexOf(u)].bust, 1)}`).join(' > '), { secs: 6 });
+  },
+  async () => {
+    const up = pick(UPCARDS), t = await engine.dealer(LEARN_RULES, up);
+    const target = pct(t.bust, 1);
+    const others = shuffle(UPCARDS.filter((u) => u !== up)).slice(0, 3);
+    return mc(`Which dealer upcard busts almost exactly <b>${target}</b> of the time?`, upLabel(up), others.map(upLabel), `${upLabel(up)} busts ${target}.`, { secs: 5 });
+  },
 ];
 
 // ---- Tier 6: rule-set fluency (rules panel reader) -------------------------------------------
@@ -171,6 +186,51 @@ const T6 = async () => {
     `Table ${p.better}`, [`Table ${worse}`], `Table A: ${p.ea.toFixed(2)}% · Table B: ${p.eb.toFixed(2)}% house edge. Playing ${worse} instead costs you an extra <b>$${p.costPer100.toFixed(2)} per $100 wagered</b>.`, { secs: 5 });
 };
 
+const T6_TWEAKS = [
+  ['Switch to 6:5 blackjack', { blackjackPays: 1.2 }],
+  ['Dealer hits soft 17', { dealerHitsSoft17: true }],
+  ['No double after split', { doubleAfterSplit: false }],
+  ['No hole card (ENHC)', { peekOn: 'none', surrender: 'none' }],
+  ['Double on 9-11 only', { doubleRestriction: '9-11' }],
+];
+const T6b = async () => {
+  const base = randomTable();
+  const baseEdge = await houseEdge(base);
+  if (baseEdge === null) return T6b();
+  const three = shuffle(T6_TWEAKS).slice(0, 3);
+  const deltas = [];
+  for (const [name, chg] of three) {
+    const e = await houseEdge({ ...base, ...chg });
+    if (e === null) return T6b();
+    deltas.push([name, e - baseEdge]);
+  }
+  deltas.sort((a, b) => b[1] - a[1]);
+  const worst = deltas[0];
+  return mc(`Starting from <div class="card"><span class="small">${describeRules(base)}</span></div>which single change costs you the most?`,
+    worst[0], deltas.slice(1).map(([n]) => n), deltas.map(([n, d]) => `${n}: ${d >= 0 ? '+' : ''}${d.toFixed(2)}pp`).join(' · '), { secs: 6 });
+};
+const T6c = async () => {
+  const [name, chg] = pick(T6_TWEAKS);
+  const base = { decks: 6, dealerHitsSoft17: false, doubleAfterSplit: true, resplitAces: false, surrender: 'late', peekOn: 'both', blackjackPays: 1.5, doubleRestriction: 'any', maxSplitHands: 4 };
+  const [be, ce] = [await houseEdge(base), await houseEdge({ ...base, ...chg })];
+  if (be === null || ce === null) return T6c();
+  const d = ce - be;
+  const fmt = (x) => `${x >= 0 ? '+' : ''}${x.toFixed(2)} pp`;
+  return mc(`At the Reference game (${describeRules(base)}), "${name}" changes the house edge by:`, fmt(d), [fmt(d * 2), fmt(d / 2), fmt(-d)],
+    `${fmt(d)} — about $${Math.abs(d).toFixed(2)} per $100 wagered.`, { secs: 6 });
+};
+const RED_FLAGS = [
+  { table: '8 decks · S17 · DAS · no surrender · peek · 6:5', flag: '6:5 blackjack', why: '6:5 costs more than every other rule difference combined — about 1.4% of your action on its own.' },
+  { table: '6 decks · H17 · DAS · no surrender · peek · 3:2', flag: 'Dealer hits soft 17', why: 'H17 alone costs about 0.2% — smaller than 6:5, but still the standout in this set.' },
+  { table: '6 decks · S17 · no DAS · no surrender · peek · 3:2', flag: 'No double after split', why: 'Losing DAS costs about 0.14% — the standout rule here.' },
+  { table: '6 decks · S17 · DAS · no surrender · no hole card (ENHC) · 3:2', flag: 'No hole card (ENHC)', why: 'ENHC costs about 0.11% by itself here.' },
+];
+const T6d = () => {
+  const sc = pick(RED_FLAGS);
+  return mc(`<div class="card"><span class="small">${sc.table}</span></div>Which single feature of this table is the biggest red flag?`, sc.flag,
+    RED_FLAGS.filter((x) => x !== sc).map((x) => x.flag), sc.why, { secs: 5 });
+};
+
 // ---- Tier 7: variants & side bets -------------------------------------------------------------
 const T7 = [
   async () => {
@@ -188,6 +248,10 @@ const T7 = [
       { q: 'In Gravity Blackjack, a random multiplier (2×–10×) can drop onto a side bet after betting closes. It can land on:', a: 'One of the four side bets, never your main hand', ds: ['Your main bet', 'Any bet, main hand included', 'Only bets you placed'], why: 'The multiplier only ever boosts a side-bet payout that hits — the main blackjack bet is never multiplied.' },
       { q: 'A "multiplier" drops on a side bet you did NOT bet on. It tells you:', a: 'Nothing about your next hand', ds: ['The next hand is more likely to hit', 'You are due', 'Bet more now'], why: 'Every hand is independent; a multiplier landing changes the payout of a bet, not the cards.' },
       { q: 'You only play digital blackjack, fresh shuffle every hand (or reset well before the shoe runs low). Card counting is worthless here because:', a: 'There\'s no depleted shoe to track — past cards carry no information', ds: ['The dealer always wins ties', 'Counting only works with 6+ players', 'It only works on side bets'], why: 'Counting relies on a shoe getting richer or poorer in tens as it\'s dealt down. Reshuffling every hand (or every few hands) erases that.' },
+      { q: 'Gravity Blackjack\'s "10-card Charlie": if you reach 10 cards without busting, you:', a: 'Win automatically, regardless of total', ds: ['Push automatically', 'Must stand immediately', 'Only win if your total beats the dealer'], why: 'A non-busted 10-card hand wins outright — it never gets compared to the dealer\'s total.' },
+      { q: 'Of Gravity Blackjack\'s four side bets, which carries the smallest house edge (least bad — still far worse than the main hand)?', a: '21+3 (about 16.8%)', ds: ['Perfect Pairs (about 20.2%)', 'Lucky Ladies (about 18.3%)', 'Dealer Bust (about 19.0%)'], why: '21+3 is the "best of a bad bunch" here — still roughly 30x the cost of the main hand per dollar.' },
+      { q: 'Of Gravity Blackjack\'s four side bets, which carries the largest house edge — the single worst bet at the table?', a: 'Perfect Pairs (about 20.2%)', ds: ['21+3 (about 16.8%)', 'Lucky Ladies (about 18.3%)', 'Dealer Bust (about 19.0%)'], why: 'Perfect Pairs is the worst of the four here.' },
+      { q: 'The Gravity Blackjack main hand, played with perfect strategy, costs about:', a: '0.53% of your action', ds: ['0.33% of your action', '5.3% of your action', '16.8% of your action'], why: 'Slightly worse than a typical 8-deck online table (about 0.43%) because of the unpeeked-Ten risk and the one-split-only limit.' },
     ]);
     return mc(sc.q, sc.a, sc.ds, sc.why);
   },
@@ -233,9 +297,23 @@ const T8 = [
     ]);
     return mc(`<b>${sc.t}</b> This is:`, sc.a, ['Loss chasing (escalation)', 'Breaking your stop-rule', "Gambler's fallacy", 'House-money effect', 'Sound bankroll management'].filter((x) => x !== sc.a), sc.why);
   },
+  async () => {
+    const bet = pick([5, 10, 25]), bank = pick([200, 500, 1000]), hands = pick([200, 500, 1000]);
+    const sd = 1.14 * Math.sqrt(hands) * bet, z = bank / sd;
+    const ok = z >= 2 ? 'Safe — 2+ standard swings' : z >= 1 ? 'Thin — under 2 standard swings' : 'Risky — under 1 standard swing';
+    return mc(`Bankroll <b>${money(bank)}</b>, bet <b>${money(bet)}</b>, planning <b>${hands} hands</b>. One standard swing is about ${money(sd)}. Bankroll-to-swing ratio (a risk-of-ruin read):`, ok,
+      ['Safe — 2+ standard swings', 'Thin — under 2 standard swings', 'Risky — under 1 standard swing'].filter((x) => x !== ok),
+      `${money(bank)} ÷ ${money(sd)} = ${z.toFixed(2)} standard swings. Professional bankroll management targets at least 2, ideally more, before a stop-loss even comes into play.`);
+  },
+  () => {
+    const e = pick([0.004, 0.0053, 0.014, 0.02]);
+    return mc(`Kelly criterion sizes your bet to your edge. At a <b>−${(e * 100).toFixed(2)}%</b> house edge, the Kelly-optimal bet is:`, 'Zero — Kelly never recommends betting into a negative edge',
+      ['A fraction equal to the edge', 'A fraction equal to twice the edge', 'The table maximum'],
+      'Kelly sizing only applies to a positive edge. Perfect basic strategy still leaves blackjack a losing game, so by that logic the "optimal" bet is not to bet at all — sizing here is about bankroll survival and entertainment budget, not growth.');
+  },
 ];
 
-export const QUIZ = { t0: T0, t1: T1, t6: [T6], t7: T7, t8: T8 };
+export const QUIZ = { t0: T0, t1: T1, t6: [T6, T6b, T6c, T6d], t7: T7, t8: T8 };
 export async function makeQuestion(genId) {
   const bank = QUIZ[genId];
   return pick(bank)();
