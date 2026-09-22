@@ -42,7 +42,7 @@ async function trap(el, ctx) {
   const ctl = startRunner(el, {
     mode: 'trap', title: 'Trap Mode', exitHref: '#/play', rules: ctx.rules,
     source: { next: () => ({ trap: randomTrap({ multipliers: true }) }) },
-    strikes: 1, seconds: 4, autoAdvanceMs: 500,
+    strikes: 1, seconds: 4, autoAdvanceMs: 2200,
     hud: (st) => `<span class="streak ok">Declined <span class="num">${st.correct}</span> in a row</span><span class="dim">Best ${ctx.profile.bests.trap || 0}</span>`,
     onFinish: async (st) => {
       const p = ctx.profile; p.bests = p.bests || {};

@@ -112,13 +112,19 @@ export function gravityTable(el, ctx) {
           ${S.sideWagered ? `<div class="small dim" style="margin-top:2px">Side bets: $${S.sideWagered.toFixed(0)} wagered, net <span class="num ${S.sideNet >= 0 ? 'ok' : 'bad'}">${$money(S.sideNet)}</span>.</div>` : ''}</div>`;
     };
 
+    function sideAmounts() {
+      const one = (id) => (S.side[id] ? Math.round(S.bet * 0.2 * 100) / 100 : 0);
+      return { pp: one('pp'), t213: one('t213'), ll: one('ll'), bust: one('bust') };
+    }
+    const totalStake = (sideAmt) => S.bet + Object.values(sideAmt).reduce((a, b) => a + b, 0);
+
     async function betPhase() {
       hud();
-      const sideAmt = (id) => (S.side[id] ? Math.round(S.bet * 0.2 * 100) / 100 : 0);
       const draw = () => {
+        const sa = sideAmounts();
         $('tbl').innerHTML = `<div class="table"><div class="seat"><div class="who">Place your bet</div><div class="big num" id="bv">${$money(S.bet)}</div><div class="small dim" id="bp"></div>
           <div class="row wrap" id="sidebets" style="margin-top:12px;justify-content:center;gap:6px">
-            ${Object.keys(SIDE_LABEL).map((id) => `<button class="btn small ${S.side[id] ? 'primary' : 'ghost'}" data-sb="${id}">${SIDE_LABEL[id]}${S.side[id] ? ` $${sideAmt(id).toFixed(2)}` : ''}</button>`).join('')}
+            ${Object.keys(SIDE_LABEL).map((id) => `<button class="btn small ${S.side[id] ? 'primary' : 'ghost'}" data-sb="${id}">${SIDE_LABEL[id]}${S.side[id] ? ` $${sa[id].toFixed(2)}` : ''}</button>`).join('')}
           </div></div></div>`;
         $('tbl').querySelectorAll('[data-sb]').forEach((b) => b.onclick = () => { S.side[b.dataset.sb] = !S.side[b.dataset.sb]; draw(); });
         upd();
@@ -129,7 +135,8 @@ export function gravityTable(el, ctx) {
         const pctBank = S.bet / Math.max(S.bank, 0.01) * 100;
         $('bp').textContent = `${pctBank.toFixed(1)}% of bankroll${pctBank > 5 ? ' — big' : pctBank <= 2 ? ' — sensible' : ''}`;
         $('bp').className = 'small ' + (pctBank > 5 ? 'due' : 'dim');
-        $('tbl').querySelectorAll('[data-sb]').forEach((b) => { if (S.side[b.dataset.sb]) b.textContent = `${SIDE_LABEL[b.dataset.sb]} $${sideAmt(b.dataset.sb).toFixed(2)}`; });
+        const sa = sideAmounts();
+        $('tbl').querySelectorAll('[data-sb]').forEach((b) => { if (S.side[b.dataset.sb]) b.textContent = `${SIDE_LABEL[b.dataset.sb]} $${sa[b.dataset.sb].toFixed(2)}`; });
       };
       draw();
       return new Promise((resolve) => {
@@ -138,9 +145,9 @@ export function gravityTable(el, ctx) {
         $('bar').querySelector('#m').onclick = () => { S.bet = Math.max(cfg.unit, S.bet - cfg.unit); upd(); };
         $('bar').querySelector('#p').onclick = () => { if (S.bet + cfg.unit <= S.bank / 1) { S.bet += cfg.unit; upd(); } };
         $('bar').querySelector('#d').onclick = () => {
-          const total = S.bet + Object.keys(SIDE_LABEL).reduce((a, id) => a + sideAmt(id), 0);
-          if (total > S.bank) return toast('Not enough bankroll for that bet.');
-          resolve({ pp: sideAmt('pp'), t213: sideAmt('t213'), ll: sideAmt('ll'), bust: sideAmt('bust') });
+          const sa = sideAmounts();
+          if (totalStake(sa) > S.bank) return toast('Not enough bankroll for that bet.');
+          resolve(sa);
         };
       });
     }
@@ -157,8 +164,10 @@ export function gravityTable(el, ctx) {
       return new Promise((res) => $('bar').querySelectorAll('.act').forEach((b) => b.onclick = () => res(b.dataset.a === 'accept')));
     }
 
-    async function round() {
-      const sideAmt = await betPhase();
+    async function round(rebet) {
+      let sideAmt;
+      if (rebet) { sideAmt = sideAmounts(); if (totalStake(sideAmt) > S.bank) rebet = false; }
+      if (rebet) { hud(); $('panel').innerHTML = ''; } else sideAmt = await betPhase();
       if (stopped) return;
       const bet = S.bet;
       const shoe = freshShoe(rules.decks);
@@ -315,13 +324,14 @@ export function gravityTable(el, ctx) {
         for (;;) {
           showTable(r, { hide: false, newFrom: { dealer: 99, hands: r.hands.map((x) => x.cards.length) } });
           $('panel').innerHTML = verdictHTML + (cfg.mode === 'rewind' ? deviationsHTML() : '');
-          $('bar').style.gridTemplateColumns = '1fr';
-          $('bar').innerHTML = `<button class="btn primary block" id="nx">Next hand</button>`;
+          $('bar').style.gridTemplateColumns = '1fr 1fr';
+          $('bar').innerHTML = `<button class="btn" id="chg2">Change bet</button><button class="btn primary" id="nx">Rebet ${$money(bet)}</button>`;
           const action = await new Promise((res) => {
-            $('bar').querySelector('#nx').onclick = () => res('next');
+            $('bar').querySelector('#nx').onclick = () => res('rebet');
+            $('bar').querySelector('#chg2').onclick = () => res('change');
             $('panel').querySelectorAll('[data-rw]').forEach((b) => b.onclick = () => res('rw:' + b.dataset.rw));
           });
-          if (action === 'next') return;
+          if (action === 'rebet' || action === 'change') return action;
           await doRewind(checkpoints[Number(action.slice(3))], bet, net);
         }
       }
@@ -332,9 +342,9 @@ export function gravityTable(el, ctx) {
         S.overridden = true;
       }
       if (S.bank < cfg.unit) return endSession(S, cfg, 'broke');
-      await summaryLoop();
+      const next = await summaryLoop();
       $('panel').innerHTML = '';
-      return round();
+      return round(next === 'rebet');
     }
 
     // Practice + Rewind: identical mechanics to games/live.js — replay from a captured decision

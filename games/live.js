@@ -106,8 +106,9 @@ export function liveTable(el, ctx) {
       return new Promise((res) => $('bar').querySelectorAll('.act').forEach((b) => b.onclick = () => res(b.dataset.a === 'accept')));
     }
 
-    async function round() {
-      await betPhase();
+    async function round(rebet) {
+      if (rebet && S.bet > S.bank) rebet = false;   // can't afford the same bet anymore
+      if (rebet) { hud(); $('panel').innerHTML = ''; } else await betPhase();
       if (stopped) return;
       const bet = S.bet;
       const shoe = shoeFor();
@@ -224,19 +225,20 @@ export function liveTable(el, ctx) {
       }
       $('panel').innerHTML = verdictHTML;   // shown immediately, before any stop-rule sheet pops up
 
-      // Loop the hand summary until "Next hand" is clicked. A rewind takes over $('tbl')/$('panel')/$('bar')
-      // on its own, so only one of these two — the summary or a rewind — ever owns them at a time.
+      // Loop the hand summary until Rebet/Change bet is clicked. A rewind takes over
+      // $('tbl')/$('panel')/$('bar') on its own, so only one of these ever owns them at a time.
       async function summaryLoop() {
         for (;;) {
           showTable(r, { hide: false, newFrom: { dealer: 99, hands: r.hands.map((x) => x.cards.length) } });
           $('panel').innerHTML = verdictHTML + (cfg.mode === 'rewind' ? deviationsHTML() : '');
-          $('bar').style.gridTemplateColumns = '1fr';
-          $('bar').innerHTML = `<button class="btn primary block" id="nx">Next hand</button>`;
+          $('bar').style.gridTemplateColumns = '1fr 1fr';
+          $('bar').innerHTML = `<button class="btn" id="chg2">Change bet</button><button class="btn primary" id="nx">Rebet ${$money(bet)}</button>`;
           const action = await new Promise((res) => {
-            $('bar').querySelector('#nx').onclick = () => res('next');
+            $('bar').querySelector('#nx').onclick = () => res('rebet');
+            $('bar').querySelector('#chg2').onclick = () => res('change');
             $('panel').querySelectorAll('[data-rw]').forEach((b) => b.onclick = () => res('rw:' + b.dataset.rw));
           });
-          if (action === 'next') return;
+          if (action === 'rebet' || action === 'change') return action;
           await doRewind(checkpoints[Number(action.slice(3))], bet, net);
         }
       }
@@ -248,9 +250,9 @@ export function liveTable(el, ctx) {
         S.overridden = true;
       }
       if (S.bank < cfg.unit) return endSession(S, cfg, 'broke');
-      await summaryLoop();
+      const next = await summaryLoop();
       $('panel').innerHTML = '';
-      return round();
+      return round(next === 'rebet');
     }
 
     // Rewind mode only: replay a round from a captured decision point with the correct play, using a
