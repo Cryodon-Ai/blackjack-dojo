@@ -17,7 +17,7 @@
 // pair cards removed (hand 2's draws are not reduced by hand 1's draws). Resplitting is modelled
 // exactly as a sequential process over the total hand count (see _splitTotalW).
 
-import { normalizeRules } from './rules.js';
+import { normalizeRules, peeksOnUp } from './rules.js';
 
 export class Solver {
   constructor(rulesIn) {
@@ -56,7 +56,8 @@ export class Solver {
     if (up === 10) return this.c[1] / this.n;
     return 0;
   }
-  _nMass(up) { return this.rules.peek ? 1 - this._pBJ(up) : 1; }
+  _peeks(up) { return peeksOnUp(this.rules, up); }
+  _nMass(up) { return this._peeks(up) ? 1 - this._pBJ(up) : 1; }
 
   // ---- dealer ----------------------------------------------------------------------------
   // Returns Float64Array(7): [P17, P18, P19, P20, P21, Pbust, Pblackjack], unconditional.
@@ -103,7 +104,7 @@ export class Solver {
       const dt = 17 + i;
       w += D[i] * (total > dt ? 1 : total === dt ? 0 : -1);
     }
-    if (!this.rules.peek) w -= D[6];
+    if (!this._peeks(up)) w -= D[6];
     return w;
   }
 
@@ -226,14 +227,14 @@ export class Solver {
     const res = {
       up, cards: cards.slice(), hard, soft, total, n,
       N0,
-      pBJ: R.peek ? 1 - N0 : this._pBJ(up),
+      pBJ: this._peeks(up) ? 1 - N0 : this._pBJ(up),
       blackjack: n === 2 && total === 21,
       W: {}, ev: {}, legal: { stand: true, hit: true, double: false, split: false, surrender: false },
     };
     if (hard > 21) throw new Error('hand already busted');
     if (res.blackjack) {
       // Peek games: conditional EV is the full blackjack payout. ENHC: dealer BJ pushes, so scale.
-      res.ev.stand = R.peek ? R.blackjackPays : R.blackjackPays * (1 - res.pBJ);
+      res.ev.stand = this._peeks(up) ? R.blackjackPays : R.blackjackPays * (1 - res.pBJ);
       this._reset();
       return res;
     }
@@ -244,7 +245,7 @@ export class Solver {
       res.legal.split = true;
       res.W.split = this._splitTotalW(cards[0], up);
     }
-    if (n === 2 && R.surrender === 'late' && R.peek) { res.legal.surrender = true; res.W.surrender = -0.5 * N0; }
+    if (n === 2 && R.surrender === 'late' && this._peeks(up)) { res.legal.surrender = true; res.W.surrender = -0.5 * N0; }
     for (const a of Object.keys(res.W)) res.ev[a] = res.W[a] / N0;
     this._reset();
     return res;
@@ -341,11 +342,11 @@ export class Solver {
   }
 
   _uncondEV(res) {
-    const R = this.rules;
-    if (res.blackjack) return R.peek ? (1 - res.pBJ) * R.blackjackPays : res.ev.stand;
+    const peeks = this._peeks(res.up);
+    if (res.blackjack) return peeks ? (1 - res.pBJ) * this.rules.blackjackPays : res.ev.stand;
     let best = -Infinity;
     for (const a of Object.keys(res.ev)) if (res.legal[a] && res.ev[a] > best) best = res.ev[a];
-    if (!R.peek) return best;                // ENHC: BJ losses already inside W
-    return (1 - res.pBJ) * best - res.pBJ;   // peek: dealer BJ costs the original bet only
+    if (!peeks) return best;                 // no peek on this upcard: BJ losses already inside W
+    return (1 - res.pBJ) * best - res.pBJ;   // peeked: dealer BJ costs the original bet only
   }
 }

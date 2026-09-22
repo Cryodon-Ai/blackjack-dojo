@@ -2,7 +2,7 @@
 
 import { cardSVG, handValue } from './cards.js';
 import { ACTION_NAME, signed, usd100, pct } from '../app/feedback.js';
-import { upLabel } from '../engine/rules.js';
+import { upLabel, peeksOnUp } from '../engine/rules.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -52,7 +52,8 @@ export function illegalReason(rules, ctx, act) {
   }
   if (act === 'R') {
     if (rules.surrender !== 'late') return 'This table does not offer surrender.';
-    if (!rules.peek) return 'Late surrender needs the dealer to check for blackjack first.';
+    const checks = ctx.up !== undefined ? peeksOnUp(rules, ctx.up) : rules.peekOn !== 'none';
+    if (!checks) return rules.peekOn === 'ace' ? 'This table only checks for blackjack against an Ace — no surrender against a Ten.' : 'Late surrender needs the dealer to check for blackjack first.';
     if (ctx.cards > 2 || ctx.afterSplit) return 'Surrender is only offered on your first two cards, before splitting.';
   }
   if (act === 'H' && ctx.afterSplitAces) return 'Split aces get one card each — no more hitting.';

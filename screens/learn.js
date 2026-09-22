@@ -104,7 +104,7 @@ async function fillRuleCosts(box) {
   const base = await houseEdge(LEARN_RULES);
   const rows = [
     ['Blackjack pays 6:5', { blackjackPays: 1.2 }], ['Dealer hits soft 17', { dealerHitsSoft17: true }], ['No double after split', { doubleAfterSplit: false }],
-    ['No hole card (European)', { peek: false, surrender: 'none' }], ['Double on 9–11 only', { doubleRestriction: '9-11' }], ['No late surrender', { surrender: 'none' }],
+    ['No hole card (European)', { peekOn: 'none', surrender: 'none' }], ['Double on 9–11 only', { doubleRestriction: '9-11' }], ['No late surrender', { surrender: 'none' }],
     ['Resplit aces allowed', { resplitAces: true }], ['1 deck (vs 6)', { decks: 1 }], ['2 decks (vs 6)', { decks: 2 }], ['8 decks (vs 6)', { decks: 8 }],
   ];
   const out = [];

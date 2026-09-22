@@ -150,8 +150,8 @@ const RULE_TWEAKS = [
 ];
 export function randomTable() {
   const r = { decks: pick([2, 4, 6, 8]), dealerHitsSoft17: Math.random() < 0.4, doubleAfterSplit: Math.random() < 0.8, resplitAces: Math.random() < 0.2,
-    surrender: 'none', peek: Math.random() < 0.88, blackjackPays: Math.random() < 0.3 ? 1.2 : 1.5, doubleRestriction: Math.random() < 0.2 ? '9-11' : 'any', maxSplitHands: 4 };
-  if (r.peek && Math.random() < 0.3) r.surrender = 'late';
+    surrender: 'none', peekOn: Math.random() < 0.88 ? 'both' : 'none', blackjackPays: Math.random() < 0.3 ? 1.2 : 1.5, doubleRestriction: Math.random() < 0.2 ? '9-11' : 'any', maxSplitHands: 4 };
+  if (r.peekOn !== 'none' && Math.random() < 0.3) r.surrender = 'late';
   return r;
 }
 export async function rulesPair() {
@@ -183,11 +183,11 @@ const T7 = [
   },
   async () => {
     const sc = pick([
-      { q: 'In <b>Free Bet Blackjack</b>, the dealer busting with <b>exactly 22</b> means:', a: 'Your non-busted hands push', ds: ['Your hands win', 'Your hands lose', 'The dealer re-deals'], why: 'That push is how the game pays for its free doubles and splits: normally a dealer 22 would have paid you.' },
-      { q: 'In Free Bet Blackjack, a <b>free double</b> is offered on your hard 9, 10 or 11. If you lose the hand, you lose:', a: 'Only your original bet', ds: ['Both bets', 'Half of both bets', 'Nothing — free bets never lose'], why: 'The casino covers the extra chip when you lose (as commonly described — verify on the game\'s rules screen). That is why the free double is worth taking; the dealer-22 push is how the game recovers the cost.' },
-      { q: 'A blackjack variant advertises <b>bigger payouts for side bets</b>. Your default assumption should be:', a: 'Negative EV until the paytable is verified', ds: ['Positive EV because the payouts are bigger', 'Neutral', 'Positive when a multiplier is showing'], why: 'Payouts and odds move together. Bigger numbers on rarer wins do not improve the price.' },
-      { q: 'A "multiplier" drops on a side bet you did NOT bet on. It tells you:', a: 'Nothing about your next hand', ds: ['The next hand is more likely to hit', 'You are due', 'Bet more now'], why: 'RNG hands are independent; a multiplier landing changes the payout of a bet, not the cards.' },
-      { q: 'Blackjack Switch pays 1:1 on blackjack, and pushes on dealer 22. The rule change you should notice first:', a: 'The natural pays 1:1 instead of 3:2', ds: ['You can see both dealer cards', 'The dealer must hit 17', 'Doubling is banned'], why: 'A 1:1 natural costs about 2.3 points of edge on its own; Switch offsets some of it with the card swap and pays for the rest with dealer-22 pushes.' },
+      { q: 'On a standard peek table, the dealer checks the hole card for blackjack when showing an Ace or a Ten. Gravity Blackjack peeks:', a: 'Only on an Ace', ds: ['Only on a Ten', 'On both', 'On neither'], why: 'A Ten-up dealer blackjack is only revealed after you\'ve already acted — that\'s the whole reason two plays change.' },
+      { q: 'Because of that, which two Gravity Blackjack plays change from a standard peek table?', a: 'Hard 11 vs 10 and 8,8 vs 10 — hit instead of double/split', ds: ['Hard 16 vs 10 — stand instead of hit', 'Soft 18 vs 9 — stand instead of hit', 'Nothing changes'], why: 'Doubling or splitting risks the extra wager to a dealer blackjack you have not been shown yet; hitting keeps that risk to the original bet.' },
+      { q: 'In Gravity Blackjack, a random multiplier (2×–10×) can drop onto a side bet after betting closes. It can land on:', a: 'One of the four side bets, never your main hand', ds: ['Your main bet', 'Any bet, main hand included', 'Only bets you placed'], why: 'The multiplier only ever boosts a side-bet payout that hits — the main blackjack bet is never multiplied.' },
+      { q: 'A "multiplier" drops on a side bet you did NOT bet on. It tells you:', a: 'Nothing about your next hand', ds: ['The next hand is more likely to hit', 'You are due', 'Bet more now'], why: 'Every hand is independent; a multiplier landing changes the payout of a bet, not the cards.' },
+      { q: 'You only play digital blackjack, fresh shuffle every hand (or reset well before the shoe runs low). Card counting is worthless here because:', a: 'There\'s no depleted shoe to track — past cards carry no information', ds: ['The dealer always wins ties', 'Counting only works with 6+ players', 'It only works on side bets'], why: 'Counting relies on a shoe getting richer or poorer in tens as it\'s dealt down. Reshuffling every hand (or every few hands) erases that.' },
     ]);
     return mc(sc.q, sc.a, sc.ds, sc.why);
   },

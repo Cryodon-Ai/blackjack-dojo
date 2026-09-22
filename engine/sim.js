@@ -6,7 +6,7 @@
 import { Solver } from './ev.js';
 import { Round } from './round.js';
 import { buildChart } from './strategy.js';
-import { normalizeRules } from './rules.js';
+import { normalizeRules, peeksOnUp } from './rules.js';
 
 // ---- exact dealer table ---------------------------------------------------------------------
 // For an upcard, returns final-total probabilities. When the dealer peeks (up = A or T), the table
@@ -17,9 +17,10 @@ export function dealerTable(rulesIn, up) {
   s._reset(); s._take(up);
   const D = s._dealer(up);
   const bj = D[6];
-  const cond = rules.peek ? 1 - bj : 1;
+  const peeks = peeksOnUp(rules, up);
+  const cond = peeks ? 1 - bj : 1;
   const t = { 17: D[0] / cond, 18: D[1] / cond, 19: D[2] / cond, 20: D[3] / cond, 21: D[4] / cond, bust: D[5] / cond };
-  t.blackjack = rules.peek ? 0 : bj;
+  t.blackjack = peeks ? 0 : bj;
   t.pBlackjackUnconditional = bj;
   return t;
 }
@@ -70,20 +71,24 @@ export class Shoe {
   }
 }
 
-// Plays out the dealer's hand. Returns 17..21, 22 (bust) or 'BJ'.
-export function playDealer(shoe, up, hole) {
+// Plays out the dealer's hand, tracking how many cards it took. Returns { result, cards } where
+// result is 17..21, 22 (bust) or 'BJ'.
+export function playDealerCounted(shoe, up, hole) {
   const hitSoft = shoe.rules.dealerHitsSoft17;
-  let hard = up + hole, ace = up === 1 || hole === 1;
-  if (hard === 11 && ace) return 'BJ';
+  let hard = up + hole, ace = up === 1 || hole === 1, cards = 2;
+  if (hard === 11 && ace) return { result: 'BJ', cards };
   for (;;) {
     const soft = ace && hard <= 11;
     const total = soft ? hard + 10 : hard;
-    if (total > 21) return 22;
-    if (total >= 18 || (total === 17 && !(soft && hitSoft))) return total;
-    const c = shoe.draw();
+    if (total > 21) return { result: 22, cards };
+    if (total >= 18 || (total === 17 && !(soft && hitSoft))) return { result: total, cards };
+    const c = shoe.draw(); cards++;
     hard += c; if (c === 1) ace = true;
   }
 }
+
+// Plays out the dealer's hand. Returns 17..21, 22 (bust) or 'BJ'.
+export function playDealer(shoe, up, hole) { return playDealerCounted(shoe, up, hole).result; }
 
 // Monte Carlo dealer distribution given the upcard. Peek games discard dealer-BJ trials, mirroring
 // what the exact table conditions on.
@@ -97,7 +102,7 @@ export function mcDealer(rulesIn, up, trials, seed = 1) {
     shoe.shuffle(); shoe.take(up);
     const hole = shoe.draw();
     const r = playDealer(shoe, up, hole);
-    if (r === 'BJ') { counts.blackjack++; if (rules.peek) continue; }
+    if (r === 'BJ') { counts.blackjack++; if (peeksOnUp(rules, up)) continue; }
     else if (r === 22) counts.bust++;
     else counts[r]++;
     used++;
@@ -123,7 +128,7 @@ export function mcFixedHand(rulesIn, cards, up, trials, seed = 7) {
   for (let i = 0; i < trials; i++) {
     shoe.shuffle(); shoe.take(up); for (const c of cards) shoe.take(c);
     const hole = shoe.draw();
-    if (rules.peek && ((up === 1 && hole === 10) || (up === 10 && hole === 1))) continue;
+    if (peeksOnUp(rules, up) && ((up === 1 && hole === 10) || (up === 10 && hole === 1))) continue;
     // Stand path uses the dealer draws from the shoe directly after the hole; the double path needs a
     // player card first, so play them on independent shuffles but with identical (up, hole).
     const snapC = Int32Array.from(shoe.c), snapN = shoe.n;

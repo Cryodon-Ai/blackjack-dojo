@@ -154,8 +154,8 @@ hr('D. Monte Carlo cross-check of the exact solver (independent method, 4-sigma 
     ['double 10 v 9', [4, 6], 9, REFERENCE_RULES], ['stand 12 v 4', [10, 2], 4, REFERENCE_RULES],
     ['stand A,7 v 9', [1, 7], 9, REFERENCE_RULES], ['double A,6 v 3', [1, 6], 3, REFERENCE_RULES],
     ['stand 20 v A', [10, 10], 1, REFERENCE_RULES], ['stand 15 v T', [10, 5], 10, REFERENCE_RULES],
-    ['stand 18 v A (ENHC)', [10, 8], 1, { ...REFERENCE_RULES, peek: false, surrender: 'none' }],
-    ['double 11 v A (ENHC, H17)', [5, 6], 1, { ...REFERENCE_RULES, peek: false, surrender: 'none', dealerHitsSoft17: true }],
+    ['stand 18 v A (ENHC)', [10, 8], 1, { ...REFERENCE_RULES, peekOn: 'none', surrender: 'none' }],
+    ['double 11 v A (ENHC, H17)', [5, 6], 1, { ...REFERENCE_RULES, peekOn: 'none', surrender: 'none', dealerHitsSoft17: true }],
     ['stand 19 v T (1 deck)', [10, 9], 10, { ...REFERENCE_RULES, decks: 1 }],
   ];
   const M = 1500000;
@@ -199,7 +199,7 @@ hr('D2. End-to-end: simulated rounds (round.js + policy) vs the solver\'s exact 
   // Full game logic (deal, peek, splits, doubles, surrender, dealer play, payouts) played by a
   // total-dependent policy, compared to the exact composition-dependent edge. Tolerance is 4 standard
   // errors plus 0.03 pp for the policy being total-dependent rather than composition-perfect.
-  const cases = [['reference 6D S17 DAS LS peek 3:2', REFERENCE_RULES], ['8D H17 no-DAS ENHC 6:5', { ...DEFAULT_RULES, decks: 8, dealerHitsSoft17: true, doubleAfterSplit: false, peek: false, blackjackPays: 1.2 }]];
+  const cases = [['reference 6D S17 DAS LS peek 3:2', REFERENCE_RULES], ['8D H17 no-DAS ENHC 6:5', { ...DEFAULT_RULES, decks: 8, dealerHitsSoft17: true, doubleAfterSplit: false, peekOn: 'none', blackjackPays: 1.2 }]];
   const N = QUICK ? 1500000 : 8000000;
   for (const [name, rules] of cases) {
     const r = playRounds(rules, N, 424242, makePolicy(rules));
@@ -219,7 +219,7 @@ if (QUICK) console.log('  skipped (--quick)');
 else {
   const t0 = Date.now();
   const edge = (rules) => new Solver(rules).houseEdge().edge * 100;
-  const base = { ...DEFAULT_RULES, decks: 8, dealerHitsSoft17: false, doubleAfterSplit: true, resplitAces: false, surrender: 'none', peek: true, blackjackPays: 1.5, doubleRestriction: 'any' };
+  const base = { ...DEFAULT_RULES, decks: 8, dealerHitsSoft17: false, doubleAfterSplit: true, resplitAces: false, surrender: 'none', peekOn: 'both', blackjackPays: 1.5, doubleRestriction: 'any' };
 
   // E1. Absolute house edges, exact composition-dependent play, resplit to 4 hands (not aces), no
   //     surrender, peek, 3:2. Source: wizardofodds.com/games/blackjack/appendix/9/<n>d<s|h>17r4/ (fetched 2026-09-19).
@@ -272,7 +272,7 @@ else {
   const tests = [
     ['Dealer hits soft 17', { dealerHitsSoft17: true }, -0.22, true],
     ['No double after split', { doubleAfterSplit: false }, -0.14, true],
-    ['European no hole card', { peek: false }, -0.11, true],
+    ['European no hole card', { peekOn: 'none' }, -0.11, true],
     ['Double on 9-11 only', { doubleRestriction: '9-11' }, -0.09, true],
     ['Resplit aces allowed', { resplitAces: true }, +0.08, true],
     ['Late surrender (vs everything)', { surrender: 'late' }, +0.07, true],
@@ -290,9 +290,52 @@ else {
     console.log(`      ${name.padEnd(32)} ${(d >= 0 ? '+' : '') + d.toFixed(3)}    ${(pub >= 0 ? '+' : '') + pub.toFixed(2)}     ${(diff >= 0 ? '+' : '') + diff.toFixed(3)}  ${scored ? (ok ? 'ok' : 'OUTSIDE ±' + TOL3) : (ok ? 'ok (unscored)' : 'differs from brief — see E1 (unscored)')}`);
     if (scored && !ok) fail(`rule cost "${name}": engine ${d.toFixed(3)} vs brief ${pub}`);
   }
-  console.log('      Five-card Charlie (+1.46 in the brief): not implemented yet — arrives with the Tier 7 variants.');
+  console.log('      Charlie rule (e.g. 10-card Charlie in Gravity Blackjack): implemented at the Round/settlement level only (rules.charlie) — deliberately not modeled in this exact EV solver, since it is rare enough not to move the chart. See Section F below for Gravity Blackjack\'s own verification.');
   console.log('      "Late surrender vs ten" in the brief: +0.07 corresponds to full late surrender (row above).');
   console.log(`\n  (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
+}
+
+// ------------------------------------------------------------------------------------------------
+hr('F. Gravity Blackjack: asymmetric peek (checks the dealer for blackjack on an Ace, not a Ten)');
+{
+  const G = { ...DEFAULT_RULES, decks: 8, dealerHitsSoft17: false, doubleAfterSplit: true, surrender: 'none', peekOn: 'ace', blackjackPays: 1.5, maxSplitHands: 2, charlie: 10 };
+
+  // The dealer table should be CONDITIONAL (no dealer-BJ mass) on an Ace, and UNCONDITIONAL on a Ten.
+  const tA = dealerTable(G, 1), tT = dealerTable(G, 10);
+  console.log(`  dealer table vs Ace:  blackjack column = ${tA.blackjack}  (expect 0 — this upcard is peeked)`);
+  console.log(`  dealer table vs Ten:  blackjack column = ${pct(tT.blackjack, 2)}%  (expect > 0 — this upcard is NOT peeked)`);
+  if (tA.blackjack !== 0) fail('Gravity: dealer table vs Ace should be conditional on no dealer BJ (blackjack column 0)');
+  if (!(tT.blackjack > 0)) fail('Gravity: dealer table vs Ten should be unconditional (blackjack column > 0)');
+
+  // The two documented strategy deviations: hitting instead of doubling/splitting into a wager that
+  // an unpeeked dealer ten-up blackjack could still take.
+  const chart = Object.fromEntries(buildChart(G).map((r) => [r.key, r]));
+  const h11 = chart.H11.cells[10].action, p88 = chart['88'].cells[10].action;
+  console.log(`  hard 11 vs Ten: ${h11}  (expect H, not D)`);
+  console.log(`  8,8 vs Ten:     ${p88}  (expect H, not P)`);
+  if (h11 !== 'H') fail(`Gravity: hard 11 vs Ten should hit (unpeeked Ten risk), engine says ${h11}`);
+  if (p88 !== 'H') fail(`Gravity: 8,8 vs Ten should hit (unpeeked Ten risk), engine says ${p88}`);
+
+  // Every other upcard's hard-11/8,8 play should be unchanged from the standard peek game (only the
+  // Ten column is special-cased) — and A,A / 8,8 vs Ace should still split (Ace IS peeked here).
+  const std = Object.fromEntries(buildChart({ ...G, peekOn: 'both' }).map((r) => [r.key, r]));
+  let unchanged = true;
+  for (const up of UPCARDS) {
+    if (up === 10) continue;
+    if (chart.H11.cells[up].action !== std.H11.cells[up].action) { unchanged = false; fail(`Gravity H11 vs ${upLabel(up)} differs from standard-peek chart outside the Ten column`); }
+    if (chart['88'].cells[up].action !== std['88'].cells[up].action) { unchanged = false; fail(`Gravity 8,8 vs ${upLabel(up)} differs from standard-peek chart outside the Ten column`); }
+  }
+  console.log(`  all other upcards for H11 and 8,8 match the standard-peek chart: ${unchanged ? 'ok' : 'see failures above'}`);
+  if (chart['88'].cells[1].action !== 'P') fail('Gravity: 8,8 vs Ace should still split (Ace is peeked)');
+
+  // Cross-check the exact hard-11-vs-Ten hit/double gap against a from-scratch Monte Carlo of the
+  // dealer's unconditional blackjack risk (independent of the peek machinery in ev.js/round.js).
+  {
+    const s = new Solver(G);
+    const r = s.evaluate(10, [5, 6]);   // hard 11
+    console.log(`  hard 11 vs Ten EV: hit ${pct(r.ev.hit).padStart(7)}%   double ${pct(r.ev.double).padStart(7)}%   (hit should exceed double)`);
+    if (!(r.ev.hit > r.ev.double)) fail(`Gravity hard 11 vs Ten: hit EV ${pct(r.ev.hit)} should exceed double EV ${pct(r.ev.double)}`);
+  }
 }
 
 // ------------------------------------------------------------------------------------------------

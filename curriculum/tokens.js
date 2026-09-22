@@ -7,6 +7,22 @@ import { bjCost } from '../app/edges.js';
 import { UPCARDS, upLabel } from '../engine/rules.js';
 import { presetById } from '../app/presets.js';
 import { houseEdge } from '../app/edges.js';
+import { perfectPairsEdge, edge21plus3, luckyLadiesEdge, dealerBustEdge, GRAVITY_PP_TABLE, GRAVITY_213_TABLE } from '../engine/sidebets.js';
+
+// Gravity Blackjack's own side-bet numbers, computed once against its actual 8-deck rules and cached
+// (the Dealer Bust figure is a seeded Monte Carlo estimate; the rest are exact).
+let gravitySideBets = null;
+function gravitySides() {
+  if (gravitySideBets) return gravitySideBets;
+  const R = presetById('gravity').rules;
+  gravitySideBets = {
+    pp: perfectPairsEdge(R.decks, GRAVITY_PP_TABLE),
+    t213: edge21plus3(R.decks, GRAVITY_213_TABLE),
+    ll: luckyLadiesEdge(R.decks),
+    bust: dealerBustEdge(R),
+  };
+  return gravitySideBets;
+}
 
 const upNum = (s) => (s === 'A' ? 1 : s === 'T' ? 10 : Number(s));
 const KEY = { hit: 'hit', stand: 'stand', double: 'double', split: 'split', surrender: 'surrender' };
@@ -37,6 +53,7 @@ async function one(spec) {
     case 'ins': return pct(insuranceEdge(6), 1);
     case 'cost65': return bjCost(6, 1.2).toFixed(2) + '%';
     case 'edge': { const p = presetById(a[0]); const e = await houseEdge(p.rules); return e === null ? '—' : e.toFixed(2) + '%'; }
+    case 'gside': { const g = gravitySides(); const b = g[a[0]]; return a[1] === 'hit' ? pct(b.hit, 1) : pct(b.edge, 1); }
     default: return `{{${spec}}}`;
   }
 }

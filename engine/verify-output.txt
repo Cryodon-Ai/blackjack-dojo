@@ -38,11 +38,11 @@ A8    S S S S S S S S S S
 A9    S S S S S S S S S S
 TT    S S S S S S S S S S
 AA    P P P P P P P P P P
-  6 decks: cells asserted 350   pass 350   fail 0   (5853 ms)
+  6 decks: cells asserted 350   pass 350   fail 0   (5747 ms)
 
   The published strategy is the same chart for 4-8 decks; re-checking the engine at both ends:
-  4 decks: cells asserted 350   pass 350   fail 0   (5517 ms)
-  8 decks: cells asserted 350   pass 350   fail 0   (5607 ms)
+  4 decks: cells asserted 350   pass 350   fail 0   (6528 ms)
+  8 decks: cells asserted 350   pass 350   fail 0   (5549 ms)
 
 ==============================================================================
 B. Structural claims the curriculum makes (checked against the engine, not asserted from memory)
@@ -126,10 +126,20 @@ E. House edge: published exact values, then the rule-cost table the Tier 6 lesso
       4 decks  (vs 8)                  +0.083    +0.06     +0.023  ok (unscored)
       2 decks  (vs 8)                  +0.251    +0.19     +0.061  differs from brief — see E1 (unscored)
       1 deck   (vs 8)                  +0.612    +0.48     +0.132  differs from brief — see E1 (unscored)
-      Five-card Charlie (+1.46 in the brief): not implemented yet — arrives with the Tier 7 variants.
+      Charlie rule (e.g. 10-card Charlie in Gravity Blackjack): implemented at the Round/settlement level only (rules.charlie) — deliberately not modeled in this exact EV solver, since it is rare enough not to move the chart. See Section F below for Gravity Blackjack's own verification.
       "Late surrender vs ten" in the brief: +0.07 corresponds to full late surrender (row above).
 
-  (166 s)
+  (161 s)
+
+==============================================================================
+F. Gravity Blackjack: asymmetric peek (checks the dealer for blackjack on an Ace, not a Ten)
+==============================================================================
+  dealer table vs Ace:  blackjack column = 0  (expect 0 — this upcard is peeked)
+  dealer table vs Ten:  blackjack column = 7.71%  (expect > 0 — this upcard is NOT peeked)
+  hard 11 vs Ten: H  (expect H, not D)
+  8,8 vs Ten:     H  (expect H, not P)
+  all other upcards for H11 and 8,8 match the standard-peek chart: ok
+  hard 11 vs Ten EV: hit   3.211%   double   0.995%   (hit should exceed double)
 
 ==============================================================================
 RESULT: GREEN — all assertions passed

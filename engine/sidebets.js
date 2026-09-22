@@ -1,6 +1,9 @@
 // Exact house edges for common side bets, by enumeration over the shoe, for an explicitly stated paytable.
 // Nothing here is claimed for any specific casino's version: paytables vary. Suits: 0..3 (0,3 = black; 1,2 = red).
 
+import { Shoe, mulberry32, playDealerCounted } from './sim.js';
+import { normalizeRules } from './rules.js';
+
 // Insurance / even money: pays 2:1 on a dealer ten-value hole card.
 export function insuranceEdge(decks) {
   const N = 52 * decks;
@@ -42,4 +45,60 @@ export function edge21plus3(decks, pay = T213_TABLE) {
     if (k) { ev += p * pay[k]; hit += p; } else ev -= p;   // winners add their net payout, losers subtract the bet
   }
   return { edge: -ev, hit };
+}
+
+// Gravity Blackjack's own base paytables (before its multiplier feature), per the game's published
+// rules — distinct from the generic PP_TABLE/T213_TABLE above, which model a typical standalone table.
+export const GRAVITY_PP_TABLE = { mixed: 5, colored: 10, perfect: 20 };
+export const GRAVITY_213_TABLE = { flush: 4, straight: 10, trips: 20, straightFlush: 30, suitedTrips: 100 };
+
+// Lucky Ladies: your first two cards. Suit index convention here (internal to this file, matching
+// edge21plus3's a&3 encoding): 0=spades, 1=hearts, 2=diamonds, 3=clubs.
+export const LL_TABLE = { qhPair: 100, matched20: 20, suited20: 10, any20: 2, anyQueen: 1 };
+export function luckyLadiesEdge(decks, pay = LL_TABLE) {
+  const N = 52 * decks;
+  const rank = (x) => x >> 2, suit = (x) => x & 3;
+  const val = (r) => (r === 0 ? 11 : r <= 8 ? r + 1 : 10);   // two-card value; Ace counts as 11
+  const QUEEN = 11, HEARTS = 1;
+  const cls = (a, b) => {
+    const ra = rank(a), rb = rank(b), sa = suit(a), sb = suit(b);
+    const total = val(ra) + val(rb);
+    if (ra === QUEEN && rb === QUEEN && sa === HEARTS && sb === HEARTS) return 'qhPair';
+    if (total === 20 && ra === rb && sa === sb) return 'matched20';
+    if (total === 20 && sa === sb) return 'suited20';
+    if (total === 20) return 'any20';
+    if (ra === QUEEN || rb === QUEEN) return 'anyQueen';
+    return null;
+  };
+  let ev = 0, hit = 0;
+  for (let a = 0; a < 52; a++) for (let b = 0; b < 52; b++) {
+    const na = decks, nb = decks - (b === a ? 1 : 0);
+    if (nb <= 0) continue;
+    const p = (na / N) * (nb / (N - 1));
+    const k = cls(a, b);
+    if (k) { ev += p * pay[k]; hit += p; } else ev -= p;
+  }
+  return { edge: -ev, hit };
+}
+
+// Dealer Bust: pays on a dealer bust, tiered by how many cards the dealer took. No exact closed
+// form is implemented here (would require a card-count-indexed dealer recursion), so this is a
+// seeded Monte Carlo estimate — call sites should label it as simulated, not exact.
+export const DB_TABLE = { '3-4': 1, '5': 10, '6': 25, '7': 100, '8+': 300 };
+export function dealerBustEdge(rulesIn, pay = DB_TABLE, trials = 1_000_000, seed = 42) {
+  const rules = normalizeRules(rulesIn);
+  const rand = mulberry32(seed);
+  const shoe = new Shoe(rules, rand);
+  const tierFor = (cards) => (cards <= 4 ? '3-4' : cards === 5 ? '5' : cards === 6 ? '6' : cards === 7 ? '7' : '8+');
+  const tierHits = { '3-4': 0, '5': 0, '6': 0, '7': 0, '8+': 0 };
+  let ev = 0, hit = 0;
+  for (let i = 0; i < trials; i++) {
+    shoe.shuffle();
+    const up = shoe.draw(), hole = shoe.draw();
+    const { result, cards } = playDealerCounted(shoe, up, hole);
+    if (result === 22) { const t = tierFor(cards); tierHits[t]++; hit++; ev += pay[t]; }
+    else ev -= 1;   // dealer stands or has blackjack: the bust bet loses
+  }
+  const hitRate = {}; for (const k of Object.keys(tierHits)) hitRate[k] = tierHits[k] / trials;
+  return { edge: -ev / trials, hit: hit / trials, tierHits: hitRate, n: trials, simulated: true };
 }

@@ -208,13 +208,17 @@ async function settings(body, ctx) {
       <label class="field">Unit bet ($)<input type="number" id="ub" inputmode="decimal" value="${s.unit}"></label></div>
     <div class="card"><h3>Drills</h3>
       <label class="field">Flash Drill starting clock: <b id="fsv">${s.flashSeconds.toFixed(1)}s</b> (tightens to 1.2s as you improve)<input type="range" id="fs" min="1.2" max="4" step="0.1" value="${s.flashSeconds}"></label>
-      <div class="toggle"><span>Coach mode in Live Table (blocks wrong moves)</span><input type="checkbox" id="coach" ${s.coach ? 'checked' : ''}></div>
+      <label class="field">Live Table feedback mode<select id="mode">
+        <option value="off" ${s.mode === 'off' ? 'selected' : ''}>Off — no feedback</option>
+        <option value="coach" ${s.mode === 'coach' ? 'selected' : ''}>Coach — blocks wrong moves and explains</option>
+        <option value="rewind" ${s.mode === 'rewind' ? 'selected' : ''}>Practice + Rewind — play freely, then replay mistakes</option>
+      </select></label>
       <div class="toggle"><span>Show the chart before Tier 6</span><input type="checkbox" id="rv" ${s.reveal ? 'checked' : ''}></div></div>
     <div class="card"><h3>About the numbers</h3><p class="small dim">House edges and EVs are computed by an exact solver that is verified against published tables (see engine/verify.js). Everything else — including whatever a casino's marketing says about side bets — is marked as unverified when I cannot check it.</p></div>`;
   body.querySelector('#rules').onclick = () => openRulesEditor(rules, { onSave: async (r, id) => { await ctx.setRules(r, id); engine.prefill(ctx.rules, () => {}); settings(body, ctx); } });
   const num = (id, key, min = 0) => body.querySelector('#' + id).onchange = async (e) => { const v = Number(e.target.value); if (v >= min) { s[key] = v; await ctx.save(); } };
   num('ll', 'lossLimit', 1); num('bk', 'bankroll', 1); num('ub', 'unit', 0.01);
   body.querySelector('#fs').oninput = async (e) => { s.flashSeconds = Number(e.target.value); body.querySelector('#fsv').textContent = s.flashSeconds.toFixed(1) + 's'; await ctx.save(); };
-  body.querySelector('#coach').onchange = async (e) => { s.coach = e.target.checked; await ctx.save(); };
+  body.querySelector('#mode').onchange = async (e) => { s.mode = e.target.value; s.coach = s.mode === 'coach'; await ctx.save(); };
   body.querySelector('#rv').onchange = async (e) => { s.reveal = e.target.checked; await ctx.save(); };
 }

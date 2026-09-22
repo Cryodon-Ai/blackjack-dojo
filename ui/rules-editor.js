@@ -10,7 +10,7 @@ export function openRulesEditor(current, { title = 'Table rules', onSave } = {})
   const root = s.el.querySelector('#re');
 
   async function draw() {
-    if (r.surrender === 'late' && !r.peek) r.surrender = 'none';
+    if (r.surrender === 'late' && r.peekOn === 'none') r.surrender = 'none';
     const edge = await houseEdge(r);
     const per100 = edge === null ? null : edge;
     root.innerHTML = `
@@ -22,8 +22,12 @@ export function openRulesEditor(current, { title = 'Table rules', onSave } = {})
       <div class="toggle"><span>Dealer hits soft 17 (H17)</span><input type="checkbox" id="h17" ${r.dealerHitsSoft17 ? 'checked' : ''}></div>
       <div class="toggle"><span>Double after split (DAS)</span><input type="checkbox" id="das" ${r.doubleAfterSplit ? 'checked' : ''}></div>
       <div class="toggle"><span>Resplit aces</span><input type="checkbox" id="rsa" ${r.resplitAces ? 'checked' : ''}></div>
-      <div class="toggle"><span>Dealer peeks for blackjack</span><input type="checkbox" id="peek" ${r.peek ? 'checked' : ''}></div>
-      <div class="toggle"><span>Late surrender ${r.peek ? '' : '<span class="dim small">(needs peek)</span>'}</span><input type="checkbox" id="ls" ${r.surrender === 'late' ? 'checked' : ''} ${r.peek ? '' : 'disabled'}></div>
+      <label class="field">Dealer checks for blackjack<select id="peek">
+        <option value="both" ${r.peekOn === 'both' ? 'selected' : ''}>On Ace and Ten (standard peek)</option>
+        <option value="ace" ${r.peekOn === 'ace' ? 'selected' : ''}>On Ace only (e.g. Gravity Blackjack)</option>
+        <option value="none" ${r.peekOn === 'none' ? 'selected' : ''}>Never (no hole card / ENHC)</option>
+      </select></label>
+      <div class="toggle"><span>Late surrender ${r.peekOn === 'none' ? '<span class="dim small">(needs a peek)</span>' : ''}</span><input type="checkbox" id="ls" ${r.surrender === 'late' ? 'checked' : ''} ${r.peekOn === 'none' ? 'disabled' : ''}></div>
       <div class="card ${per100 !== null && per100 > 1 ? 'bad' : ''}" style="margin-top:12px">
         <div class="small dim">House edge with perfect basic strategy <span class="pill">computed</span></div>
         <div class="big num">${per100 === null ? '—' : per100.toFixed(2) + '%'}</div>
@@ -38,7 +42,7 @@ export function openRulesEditor(current, { title = 'Table rules', onSave } = {})
     bind('h17', (t) => { r.dealerHitsSoft17 = t.checked; });
     bind('das', (t) => { r.doubleAfterSplit = t.checked; });
     bind('rsa', (t) => { r.resplitAces = t.checked; });
-    bind('peek', (t) => { r.peek = t.checked; if (!t.checked) r.surrender = 'none'; });
+    bind('peek', (t) => { r.peekOn = t.value; if (r.peekOn === 'none') r.surrender = 'none'; });
     bind('ls', (t) => { r.surrender = t.checked ? 'late' : 'none'; });
     root.querySelector('#save').onclick = () => { const { _preset, ...rules } = r; s.close(); onSave && onSave(normalizeRules(rules), _preset || null); };
   }

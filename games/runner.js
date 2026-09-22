@@ -97,7 +97,7 @@ export function startRunner(root, opts) {
     return { H: true, S: true, D: !three && !!l.double, P: !three && !!l.split, R: !three && !!l.surrender };
   }
   function reasonsFor(c) {
-    const ctx = { cards: c.ranks.length, pair: c.ranks.length === 2 && c.ranks[0] === c.ranks[1] ? c.ranks[0] : 0, handsCount: 1 };
+    const ctx = { cards: c.ranks.length, pair: c.ranks.length === 2 && c.ranks[0] === c.ranks[1] ? c.ranks[0] : 0, handsCount: 1, up: c.item && (c.item.up ?? (c.item.trap && c.item.trap.hand && c.item.trap.hand.up)) };
     return { D: illegalReason(c.rules, ctx, 'D'), P: illegalReason(c.rules, ctx, 'P'), R: illegalReason(c.rules, ctx, 'R') };
   }
   function setBar(disabled) {

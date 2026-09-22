@@ -1,6 +1,8 @@
 // One round of blackjack under a rule set: deal, legal actions, act, dealer play, settlement.
 // Card objects only need a numeric `.v` (1 = ace ... 10). Used by the Live Table UI and by simulators.
 
+import { peeksOnUp } from './rules.js';
+
 const val = (cards) => {
   let hard = 0, ace = false;
   for (const c of cards) { hard += c.v; if (c.v === 1) ace = true; }
@@ -25,10 +27,10 @@ export class Round {
     const h = { cards: [p1, p2], bet: 1, done: false, fromSplit: false, splitAces: false, surrendered: false, doubled: false, bj: false };
     this.hands = [h];
     this.dealerBJ = isBJ(this.dealer);
-    const upIsAT = up.v === 1 || up.v === 10;
-    if (R.peek && upIsAT) this.peeked = true;
+    const peeks = peeksOnUp(R, up.v);
+    if (peeks) this.peeked = true;
     h.bj = isBJ(h.cards);
-    if (R.peek && upIsAT && this.dealerBJ) { h.done = true; this.phase = 'over'; return this; }   // dealer BJ ends the round
+    if (peeks && this.dealerBJ) { h.done = true; this.phase = 'over'; return this; }   // dealer BJ ends the round
     if (h.bj) { h.done = true; this.phase = 'over'; return this; }
     this.phase = 'player';
     return this;
@@ -47,13 +49,15 @@ export class Round {
     const dblOK = R.doubleRestriction === 'any' || (!v.ace && v.hard >= 9 && v.hard <= 11);
     out.D = n === 2 && dblOK && (!h.fromSplit || R.doubleAfterSplit) && !h.splitAces;
     out.P = n === 2 && h.cards[0].v === h.cards[1].v && this.hands.length < R.maxSplitHands && (h.cards[0].v !== 1 || !h.fromSplit || R.resplitAces);
-    out.R = R.surrender === 'late' && R.peek && n === 2 && !h.fromSplit && this.hands.length === 1;
+    out.R = R.surrender === 'late' && peeksOnUp(R, this.up.v) && n === 2 && !h.fromSplit && this.hands.length === 1;
     return out;
   }
 
   _autoFinish(h) {
-    const v = val(h.cards);
-    if (v.hard > 21 || v.total === 21) h.done = true;
+    const R = this.rules, v = val(h.cards);
+    if (v.hard > 21) { h.done = true; return; }
+    if (R.charlie && h.cards.length >= R.charlie) { h.done = true; h.charlie = true; return; }
+    if (v.total === 21) h.done = true;
   }
 
   act(hi, a) {
@@ -109,6 +113,7 @@ export class Round {
       let net, res;
       if (h.surrendered) { net = -0.5; res = 'surrender'; }
       else if (h.bj) { if (this.dealerBJ) { net = 0; res = 'push'; } else { net = R.blackjackPays; res = 'blackjack'; } }
+      else if (h.charlie) { net = h.bet; res = 'charlie'; }
       else if (v.hard > 21) { net = -h.bet; res = 'lose'; }
       else if (this.dealerBJ) { net = -h.bet; res = 'lose'; }
       else if (dv.hard > 21) { net = h.bet; res = 'win'; }

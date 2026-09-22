@@ -1,7 +1,14 @@
 // Offers that are never correct for you: insurance, even money, every side bet.
 // Each trap has a `why` grounded in a number the engine computed (or an explicit "not claimed" note).
 
-import { insuranceEdge, perfectPairsEdge, edge21plus3, PP_TABLE, T213_TABLE } from '../engine/sidebets.js';
+import { insuranceEdge, perfectPairsEdge, edge21plus3, luckyLadiesEdge, dealerBustEdge, PP_TABLE, T213_TABLE, DB_TABLE } from '../engine/sidebets.js';
+import { presetById } from '../app/presets.js';
+
+let gravityBustEdge = null;
+function bustEdge() {
+  if (!gravityBustEdge) gravityBustEdge = dealerBustEdge(presetById('gravity').rules, DB_TABLE);
+  return gravityBustEdge;
+}
 
 const rnd = (n) => Math.floor(Math.random() * n);
 const pick = (a) => a[rnd(a.length)];
@@ -57,28 +64,28 @@ export const TRAP_KINDS = {
     };
   },
   dealerBust(mult) {
-    const b = bet() / 5;
+    const e = bustEdge(), b = bet() / 5;
     return {
       id: 'bust', kind: 'Dealer bust', hand: { player: stiffHand(), up: 2 + rnd(9) },
       title: 'Dealer-bust side bet?', tempt: mult ? `×${mult} multiplier dropped` : null,
-      html: `Side bet: the dealer will bust${mult ? ` — a <b>×${mult}</b> multiplier just dropped` : ''}. Add $${b}?`,
-      edge: null,
-      why: `The dealer busts only about 28% of hands overall, and the payout is set by the operator. I do not have this game's paytable, so I claim no edge — but every side bet I could compute (${pc(insuranceEdge(6))} insurance, ${pc(perfectPairsEdge(6).edge)} pairs, ${pc(edge21plus3(6).edge)} 21+3) is many times the main game's edge. Untested side bets get treated as negative until proven otherwise.`,
+      html: `Side bet: the dealer will bust, tiered by how many cards it takes${mult ? ` — a <b>×${mult}</b> multiplier just dropped` : ''}. Add $${b}?`,
+      edge: e.edge,
+      why: `The dealer busts about ${pc(e.hit)} of hands overall (Gravity Blackjack's paytable, simulated) — a ${pc(e.edge)} house edge, worse than every other side bet on the table. ${mult ? 'A multiplier only changes how big a rare win is, never how often it happens. ' : ''}Decline.`,
     };
   },
-  poker(mult) {
-    const b = bet() / 5;
+  luckyLadies(mult) {
+    const e = luckyLadiesEdge(presetById('gravity').rules.decks), b = bet() / 5;
     return {
-      id: 'poker', kind: 'Poker hand', hand: { player: stiffHand(), up: 2 + rnd(9) },
-      title: 'Poker side bet?', tempt: mult ? `×${mult} multiplier dropped` : null,
-      html: `Side bet: a poker hand from your cards and the dealer's${mult ? ` — a <b>×${mult}</b> multiplier just dropped` : ''}. Add $${b}?`,
-      edge: null,
-      why: `Poker-style side bets pay big on rare hands and lose the rest. The closest one I can compute — 21+3 — costs ${pc(edge21plus3(6).edge)} per bet (6 decks). I do not have this game's paytable, so no edge is claimed; the default assumption is that it is worse than the main game.`,
+      id: 'll', kind: 'Lucky Ladies', hand: { player: stiffHand(), up: 2 + rnd(9) },
+      title: 'Lucky Ladies?', tempt: mult ? `×${mult} multiplier dropped` : null,
+      html: `Side bet: your first two cards make 20, or contain a Queen (biggest: Q♥Q♥ 100:1)${mult ? ` — a <b>×${mult}</b> multiplier just dropped` : ''}. Add $${b}?`,
+      edge: e.edge,
+      why: `Hits ${pc(e.hit)} of the time (computed, Gravity Blackjack's paytable, 8 decks); ${pc(e.edge)} house edge — the top payout is rare enough (about 1 in 3,000 hands) that it does not make up for the rest. ${mult ? 'A drop-in multiplier changes how big that rare win is, not how often it happens. ' : ''}Decline.`,
     };
   },
   multiplierDrop() {
-    const m = pick([5, 10, 25, 50, 100]);
-    return pick([TRAP_KINDS.perfectPairs, TRAP_KINDS.threePlus21, TRAP_KINDS.dealerBust, TRAP_KINDS.poker])(m);
+    const m = pick([2, 4, 6, 8, 10]);   // Gravity Blackjack's actual multiplier values
+    return pick([TRAP_KINDS.perfectPairs, TRAP_KINDS.threePlus21, TRAP_KINDS.luckyLadies, TRAP_KINDS.dealerBust])(m);
   },
 };
 
@@ -87,5 +94,5 @@ export function randomTrap({ multipliers = true } = {}) {
   if (r < 0.2) return TRAP_KINDS.insurance();
   if (r < 0.35) return TRAP_KINDS.evenMoney();
   if (multipliers && r < 0.75) return TRAP_KINDS.multiplierDrop();
-  return pick([TRAP_KINDS.perfectPairs, TRAP_KINDS.threePlus21, TRAP_KINDS.dealerBust, TRAP_KINDS.poker])();
+  return pick([TRAP_KINDS.perfectPairs, TRAP_KINDS.threePlus21, TRAP_KINDS.luckyLadies, TRAP_KINDS.dealerBust])();
 }

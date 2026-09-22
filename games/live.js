@@ -1,8 +1,11 @@
 // Live Table: real rounds against the engine, with bankroll, EV tracker, cost-of-mistakes readout,
-// an enforced session loss limit, and optional coach mode. Fresh shuffle every round (online-RNG style).
+// an enforced session loss limit, and three feedback modes: off, coach (blocks wrong moves), and
+// practice + rewind (lets mistakes play out, then replays any deviation from the decision point with
+// the correct play so you can compare outcomes). Fresh shuffle every round (online-RNG style).
 
 import { Round } from '../engine/round.js';
-import { freshShoe, makeCard } from '../ui/cards.js';
+import { peeksOnUp, upLabel } from '../engine/rules.js';
+import { freshShoe, makeCard, shoeFromCounts, handLabel } from '../ui/cards.js';
 import { renderTable, renderActionBar, illegalReason, renderVerdict, toast } from '../ui/hand.js';
 import { engine } from '../app/engine-client.js';
 import { explain, ACTION_NAME, evKey, usd100, signed } from '../app/feedback.js';
@@ -15,6 +18,7 @@ import { openRulesEditor } from '../ui/rules-editor.js';
 import { openSheet } from '../ui/sheet.js';
 
 const $money = (x) => `${x < 0 ? '−' : ''}$${Math.abs(x).toFixed(2)}`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const KEYS = { H: 'hit', S: 'stand', D: 'double', P: 'split', R: 'surrender' };
 
@@ -30,7 +34,11 @@ export function liveTable(el, ctx) {
         <label class="field">Session bankroll ($)<input id="bk" type="number" inputmode="decimal" value="${s.bankroll}"></label>
         <label class="field">Unit bet ($)<input id="ub" type="number" inputmode="decimal" value="${s.unit}"></label>
         <label class="field"><b>Session loss limit ($)</b> — the stop-rule you commit to now<input id="ll" type="number" inputmode="decimal" value="${s.lossLimit}"></label>
-        <div class="toggle"><span>Coach mode (blocks wrong moves and explains)</span><input type="checkbox" id="coach" ${s.coach ? 'checked' : ''}></div>
+        <label class="field">Feedback mode<select id="mode">
+          <option value="off" ${s.mode === 'off' ? 'selected' : ''}>Off — no feedback</option>
+          <option value="coach" ${s.mode === 'coach' ? 'selected' : ''}>Coach — blocks wrong moves and explains</option>
+          <option value="rewind" ${s.mode === 'rewind' ? 'selected' : ''}>Practice + Rewind — play the hand freely, mistakes and all, then replay any wrong decision to see how it could have gone</option>
+        </select></label>
         <p class="small dim">This is practice with a simulated bankroll. The table below computes what this game costs; nothing here is a way to win money.</p></div>
       <button class="btn primary block" id="go">Sit down</button>`;
     el.querySelector('#chg').onclick = () => openRulesEditor(rules, { onSave: async (r, id) => { await ctx.setRules(r, id); rules = ctx.rules; setup(); } });
@@ -38,8 +46,8 @@ export function liveTable(el, ctx) {
       const bk = Number(el.querySelector('#bk').value), ub = Number(el.querySelector('#ub').value), ll = Number(el.querySelector('#ll').value);
       if (!(bk > 0 && ub > 0 && ll > 0)) return toast('Set a bankroll, a unit bet and a loss limit first.');
       if (ub * 2 > bk) return toast('Unit bet is too large for that bankroll.');
-      s.bankroll = bk; s.unit = ub; s.lossLimit = ll; s.coach = el.querySelector('#coach').checked; ctx.save();
-      play({ bankroll: bk, unit: ub, limit: ll, coach: s.coach });
+      s.bankroll = bk; s.unit = ub; s.lossLimit = ll; s.mode = el.querySelector('#mode').value; s.coach = s.mode === 'coach'; ctx.save();
+      play({ bankroll: bk, unit: ub, limit: ll, mode: s.mode });
     };
   }
 
@@ -104,6 +112,7 @@ export function liveTable(el, ctx) {
       const bet = S.bet;
       const shoe = shoeFor();
       const r = new Round(rules, () => shoe.draw()).deal();
+      const checkpoints = [];   // rewind mode: one entry per deviation from best play, captured before it's acted on
       S.hands++; S.wagered += bet;
       const up = r.up.v;
       const ranks0 = r.hands[0].cards.map((c) => c.v);
@@ -135,8 +144,9 @@ export function liveTable(el, ctx) {
 
       // Player decisions
       const firstDec = await dec0P;
-      let ev0 = firstDec.blackjack ? (rules.peek ? (1 - firstDec.pBJ) * rules.blackjackPays : firstDec.ev.stand)
-        : (() => { let b = -Infinity; for (const k of Object.keys(firstDec.ev)) if (firstDec.legal[k] && firstDec.ev[k] > b) b = firstDec.ev[k]; return rules.peek ? (1 - firstDec.pBJ) * b - firstDec.pBJ : b; })();
+      const peeksHere = peeksOnUp(rules, up);
+      let ev0 = firstDec.blackjack ? (peeksHere ? (1 - firstDec.pBJ) * rules.blackjackPays : firstDec.ev.stand)
+        : (() => { let b = -Infinity; for (const k of Object.keys(firstDec.ev)) if (firstDec.legal[k] && firstDec.ev[k] > b) b = firstDec.ev[k]; return peeksHere ? (1 - firstDec.pBJ) * b - firstDec.pBJ : b; })();
       S.expected += ev0 * bet;
 
       while (r.phase === 'player' && !stopped) {
@@ -147,7 +157,7 @@ export function liveTable(el, ctx) {
         showTable(r, { hide: true, active: hi });
         const L = r.legal(hi);
         const decP = engine.decide(rules, ranks, up);
-        const ctxL = { cards: h.cards.length, pair: h.cards.length === 2 && h.cards[0].v === h.cards[1].v ? h.cards[0].v : 0, handsCount: r.hands.length, afterSplit: h.fromSplit, afterSplitAces: h.splitAces };
+        const ctxL = { cards: h.cards.length, pair: h.cards.length === 2 && h.cards[0].v === h.cards[1].v ? h.cards[0].v : 0, handsCount: r.hands.length, afterSplit: h.fromSplit, afterSplitAces: h.splitAces, up };
         const reasons = { D: illegalReason(rules, ctxL, 'D'), P: illegalReason(rules, ctxL, 'P'), R: illegalReason(rules, ctxL, 'R'), H: illegalReason(rules, ctxL, 'H') };
         const dec = await decP;
         // best legal action per the engine, restricted to what this table allows right now
@@ -157,7 +167,7 @@ export function liveTable(el, ctx) {
         let chosen = null;
         for (;;) {
           chosen = await new Promise((res) => renderActionBar($('bar'), { legal: L, reasons, onAct: res }));
-          if (chosen === best || !cfg.coach) break;
+          if (chosen === best || cfg.mode !== 'coach') break;
           const fb = await explain(rules, ranks, up, { ...dec, action: best, legal: Object.fromEntries(Object.entries(KEYS).map(([a, k]) => [k, !!L[a]])) }, chosen);
           renderVerdict($('panel'), fb, { upcard: up, compact: true });
           toast('Coach: that is not the best play — try again.', 2200);
@@ -169,6 +179,13 @@ export function liveTable(el, ctx) {
           S.leaked += loss;
           const fb = await explain(rules, ranks, up, { ...dec, action: best, legal: Object.fromEntries(Object.entries(KEYS).map(([a, k]) => [k, !!L[a]])) }, chosen);
           renderVerdict($('panel'), fb, { upcard: up, compact: true });
+        }
+        if (cfg.mode === 'rewind' && chosen !== best) {
+          checkpoints.push({
+            hi, ranks: ranks.slice(), up, chosen, best, bestEV, chosenEV: dec.ev[KEYS[chosen]] ?? bestEV, lossAmt: loss,
+            roundSnapshot: { hands: r.hands.map((x) => ({ ...x, cards: x.cards.slice() })), dealer: r.dealer.slice(), phase: r.phase, dealerBJ: r.dealerBJ, peeked: r.peeked },
+            shoeCounts: shoe.snapshot(),
+          });
         }
         const nBefore = r.hands.length;
         r.act(hi, chosen);
@@ -196,7 +213,33 @@ export function liveTable(el, ctx) {
       S.bank += net; S.pnl += net;
       hud();
       const lines = res.hands.map((x, i) => `<div class="row" style="justify-content:space-between"><span>${res.hands.length > 1 ? `Hand ${i + 1}: ` : ''}${{ win: 'Win', lose: 'Lose', push: 'Push', blackjack: 'Blackjack', surrender: 'Surrendered' }[x.res]}${x.total > 0 && x.res !== 'blackjack' ? ` (${x.total} vs ${res.dealerBJ ? 'blackjack' : res.dealerTotal})` : ''}</span><b class="num ${x.net > 0 ? 'ok' : x.net < 0 ? 'bad' : ''}">${$money(x.net * bet)}</b></div>`).join('');
-      $('panel').innerHTML = `<div class="verdict ${net > 0 ? 'ok' : net < 0 ? 'bad' : ''}"><div class="head ${net > 0 ? 'ok' : net < 0 ? 'bad' : ''}">${net > 0 ? 'You win ' : net < 0 ? 'You lose ' : 'Push '}${net === 0 ? '' : $money(Math.abs(net))}</div>${lines}${insuranceNet ? `<div class="small dim">Insurance ${$money(insuranceNet)}</div>` : ''}${evenMoney ? '<div class="small dim">Even money paid 1:1 — blackjack would have paid more on average.</div>' : ''}</div>`;
+      const verdictHTML = `<div class="verdict ${net > 0 ? 'ok' : net < 0 ? 'bad' : ''}"><div class="head ${net > 0 ? 'ok' : net < 0 ? 'bad' : ''}">${net > 0 ? 'You win ' : net < 0 ? 'You lose ' : 'Push '}${net === 0 ? '' : $money(Math.abs(net))}</div>${lines}${insuranceNet ? `<div class="small dim">Insurance ${$money(insuranceNet)}</div>` : ''}${evenMoney ? '<div class="small dim">Even money paid 1:1 — blackjack would have paid more on average.</div>' : ''}</div>`;
+
+      function deviationsHTML() {
+        if (!checkpoints.length) return '';
+        return `<div class="card" style="margin-top:10px"><h3>Decision points</h3><p class="small dim">You played on after these — here's what the correct line would have done instead.</p>
+          ${checkpoints.map((c, i) => `<div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin:8px 0">
+            <span class="small">${handLabel(c.ranks)} vs ${upLabel(c.up)}: you ${ACTION_NAME[c.chosen]}, best was <b>${ACTION_NAME[c.best]}</b> <span class="dim">(${$money(-c.lossAmt)} EV)</span></span>
+            <button class="btn small ghost" data-rw="${i}">Rewind here</button></div>`).join('')}</div>`;
+      }
+      $('panel').innerHTML = verdictHTML;   // shown immediately, before any stop-rule sheet pops up
+
+      // Loop the hand summary until "Next hand" is clicked. A rewind takes over $('tbl')/$('panel')/$('bar')
+      // on its own, so only one of these two — the summary or a rewind — ever owns them at a time.
+      async function summaryLoop() {
+        for (;;) {
+          showTable(r, { hide: false, newFrom: { dealer: 99, hands: r.hands.map((x) => x.cards.length) } });
+          $('panel').innerHTML = verdictHTML + (cfg.mode === 'rewind' ? deviationsHTML() : '');
+          $('bar').style.gridTemplateColumns = '1fr';
+          $('bar').innerHTML = `<button class="btn primary block" id="nx">Next hand</button>`;
+          const action = await new Promise((res) => {
+            $('bar').querySelector('#nx').onclick = () => res('next');
+            $('panel').querySelectorAll('[data-rw]').forEach((b) => b.onclick = () => res('rw:' + b.dataset.rw));
+          });
+          if (action === 'next') return;
+          await doRewind(checkpoints[Number(action.slice(3))], bet, net);
+        }
+      }
 
       // stop-rule
       if (S.start - S.bank >= cfg.limit && !S.overridden) {
@@ -205,11 +248,70 @@ export function liveTable(el, ctx) {
         S.overridden = true;
       }
       if (S.bank < cfg.unit) return endSession(S, cfg, 'broke');
-      $('bar').style.gridTemplateColumns = '1fr';
-      $('bar').innerHTML = `<button class="btn primary block" id="nx">Next hand</button>`;
-      await new Promise((res) => { $('bar').querySelector('#nx').onclick = res; });
+      await summaryLoop();
       $('panel').innerHTML = '';
       return round();
+    }
+
+    // Rewind mode only: replay a round from a captured decision point with the correct play, using a
+    // continuation shoe built from the remaining-card composition at that moment (the cards already
+    // dealt stay identical; what's drawn after this point is necessarily fresh, since a different
+    // action draws different cards). Purely informational — never touches the session bankroll.
+    async function doRewind(cp, bet, origNet) {
+      const contShoe = shoeFromCounts(cp.shoeCounts);
+      const rr = new Round(rules, () => contShoe.draw());
+      rr.hands = cp.roundSnapshot.hands.map((x) => ({ ...x, cards: x.cards.slice() }));
+      rr.dealer = cp.roundSnapshot.dealer.slice();
+      rr.phase = cp.roundSnapshot.phase; rr.dealerBJ = cp.roundSnapshot.dealerBJ; rr.peeked = cp.roundSnapshot.peeked;
+      const showRR = (opts) => renderTable($('tbl'), {
+        dealer: rr.dealer, hideHole: true, hands: rr.hands.map((h, i) => ({ cards: h.cards, active: i === rr.active, note: h.doubled ? 'doubled' : '' })), ...opts,
+      });
+      showRR({});
+
+      async function decideAndAct(hi, { showHint }) {
+        const h = rr.hands[hi], ranks = h.cards.map((c) => c.v);
+        const L = rr.legal(hi);
+        const dec = await engine.decide(rules, ranks, cp.up);
+        let best = null, bestEV = -Infinity;
+        for (const a of ['S', 'H', 'D', 'P', 'R']) { const v = dec.ev[KEYS[a]]; if (L[a] && v !== undefined && v > bestEV) { best = a; bestEV = v; } }
+        const ctxL = { cards: h.cards.length, pair: h.cards.length === 2 && h.cards[0].v === h.cards[1].v ? h.cards[0].v : 0, handsCount: rr.hands.length, afterSplit: h.fromSplit, afterSplitAces: h.splitAces, up: cp.up };
+        const reasons = { D: illegalReason(rules, ctxL, 'D'), P: illegalReason(rules, ctxL, 'P'), R: illegalReason(rules, ctxL, 'R'), H: illegalReason(rules, ctxL, 'H') };
+        if (showHint) {
+          const fb = await explain(rules, ranks, cp.up, { ...dec, action: best, legal: Object.fromEntries(Object.entries(KEYS).map(([a, k]) => [k, !!L[a]])) }, best);
+          const rows = fb.lines.map((l) => `<tr class="${l.best ? 'best' : ''} ${l.legal ? '' : 'illegal'}"><td>${l.name}${l.best ? ' ✓' : ''}${l.legal ? '' : ' — n/a'}</td><td class="num">${signed(l.ev, 1)}</td></tr>`).join('');
+          $('panel').innerHTML = `<div class="verdict pop"><div class="head">Hint — ${ACTION_NAME[best]}</div><div class="reason">${esc(fb.reason)}</div><table class="evtable">${rows}</table></div>`;
+        }
+        $('bar').style.gridTemplateColumns = '';
+        const chosen = await new Promise((res) => renderActionBar($('bar'), { legal: L, reasons, onAct: res }));
+        if (!showHint) {
+          if (chosen === best) $('panel').innerHTML = `<div class="small ok" style="text-align:center">✓ ${ACTION_NAME[chosen]}</div>`;
+          else {
+            const fb = await explain(rules, ranks, cp.up, { ...dec, action: best, legal: Object.fromEntries(Object.entries(KEYS).map(([a, k]) => [k, !!L[a]])) }, chosen);
+            renderVerdict($('panel'), fb, { upcard: cp.up, compact: true });
+          }
+        }
+        rr.act(hi, chosen);
+        showRR({});
+        await sleep(300);
+      }
+
+      $('panel').innerHTML = `<div class="banner"><b>Rewind</b> — same cards up to here. Try the decision again; what's drawn next will be fresh.</div>`;
+      await decideAndAct(cp.hi, { showHint: true });
+      while (rr.phase === 'player') {
+        const hi = rr.active; if (hi < 0) break;
+        await decideAndAct(hi, { showHint: false });
+      }
+      if (rr.phase === 'dealer') rr.playDealer();
+      showRR({ hide: false });
+      const rres = rr.settle();
+      const newNet = rres.net * bet;
+      $('panel').innerHTML = `<div class="card"><h3>Original vs. the corrected line</h3>
+        <div class="row" style="justify-content:space-between"><span>What actually happened</span><b class="num ${origNet > 0 ? 'ok' : origNet < 0 ? 'bad' : ''}">${$money(origNet)}</b></div>
+        <div class="row" style="justify-content:space-between"><span>Playing it correctly from here</span><b class="num ${newNet > 0 ? 'ok' : newNet < 0 ? 'bad' : ''}">${$money(newNet)}</b></div>
+        <p class="small dim">One hand is one sample of variance — the correct play doesn't win every replay. What it guarantees is a better result on average, which is the EV gap shown for this decision.</p></div>`;
+      $('bar').style.gridTemplateColumns = '1fr';
+      $('bar').innerHTML = `<button class="btn block" id="back">Back to hand summary</button>`;
+      await new Promise((res) => { $('bar').querySelector('#back').onclick = res; });
     }
 
     function stopRule(S2, c) {
@@ -224,7 +326,7 @@ export function liveTable(el, ctx) {
     async function endSession(S2, c, why) {
       stopped = true; app.classList.remove('focus');
       const acc = S2.decisions ? S2.right / S2.decisions : 1;
-      if (S2.hands) await store.addSession({ date: Date.now(), mode: 'live', handsPlayed: S2.hands, accuracy: acc, evLost: S2.wagered ? (S2.leaked + S2.insCost) / S2.wagered : 0, bankrollDelta: S2.pnl, overrode: S2.overridden });
+      if (S2.hands) await store.addSession({ date: Date.now(), mode: c.mode === 'rewind' ? 'practice' : 'live', handsPlayed: S2.hands, accuracy: acc, evLost: S2.wagered ? (S2.leaked + S2.insCost) / S2.wagered : 0, bankrollDelta: S2.pnl, overrode: S2.overridden });
       const price = edge === null ? 0 : S2.wagered * edge / 100;
       el.innerHTML = `<h1>Session over</h1>${why === 'limit' ? '<div class="banner">You stopped at your own limit. That is the discipline working.</div>' : ''}${why === 'broke' ? '<div class="banner">Bankroll below one unit — session ends.</div>' : ''}
         <div class="stat3"><div class="card"><div class="v ${S2.pnl >= 0 ? 'ok' : 'bad'}">${$money(S2.pnl)}</div><div class="k">Result</div></div><div class="card"><div class="v">${S2.hands}</div><div class="k">Hands</div></div><div class="card"><div class="v ${acc >= 0.95 ? 'ok' : ''}">${Math.round(acc * 100)}%</div><div class="k">Accuracy</div></div></div>

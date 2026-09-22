@@ -93,13 +93,22 @@ export function freshShoe(decks, removed = []) {
   for (let r = 1; r <= 9; r++) counts[r] = 4 * d;
   counts[10] = 16 * d;
   for (const v of removed) counts[v]--;
-  let n = counts.reduce((a, b) => a + b, 0);
+  return shoeFromCounts(counts);
+}
+
+// Rebuilds a shoe from a remaining-card-count snapshot (see below) — used to "rewind" a round to a
+// decision point and replay it from there: the composition at that point is preserved, but since a
+// different action draws different cards, the actual card sequence from that point on is fresh.
+export function shoeFromCounts(counts) {
+  const c = counts.slice();
+  let n = c.reduce((a, b) => a + b, 0);
   return {
-    counts,
+    counts: c,
+    snapshot() { return c.slice(); },
     draw(force) {
-      if (force) { counts[force]--; n--; return makeCard(force); }
+      if (force) { c[force]--; n--; return makeCard(force); }
       let k = rnd(n);
-      for (let r = 1; r <= 10; r++) { k -= counts[r]; if (k < 0) { counts[r]--; n--; return makeCard(r); } }
+      for (let r = 1; r <= 10; r++) { k -= c[r]; if (k < 0) { c[r]--; n--; return makeCard(r); } }
       throw new Error('empty shoe');
     },
   };

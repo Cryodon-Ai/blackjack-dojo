@@ -30,7 +30,8 @@ export function pPlayerBJ(decks) {
 // Cost in percentage points of paying `pays` instead of 3:2.
 export const bjCost = (decks, pays) => (1.5 - pays) * pPlayerBJ(decks) * 100;
 
-export const gridKey = (r) => [r.decks, +r.dealerHitsSoft17, +r.doubleAfterSplit, +r.resplitAces, r.surrender === 'late' && r.peek ? 1 : 0, +r.peek, r.doubleRestriction === 'any' ? 'A' : 'N'].join('|');
+const PEEK_CODE = { both: 'B', ace: 'A', none: 'N' };
+export const gridKey = (r) => [r.decks, +r.dealerHitsSoft17, +r.doubleAfterSplit, +r.resplitAces, r.surrender === 'late' ? 1 : 0, PEEK_CODE[r.peekOn], r.doubleRestriction === 'any' ? 'A' : 'N'].join('|');
 
 // Returns house edge in percent (positive = house), or null if the rule set is outside the grid.
 export async function houseEdge(rulesIn) {
