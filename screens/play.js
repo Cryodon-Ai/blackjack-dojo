@@ -1,5 +1,7 @@
 // Play tab: Live Table, Trap Mode, Rules Panel Reader, and the money tools.
 import { liveTable } from '../games/live.js';
+import { practiceTable } from '../games/practice.js';
+import { countTrainer } from '../games/count.js';
 import { gravityTable } from '../games/gravity.js';
 import { startRunner } from '../games/runner.js';
 import { startQuiz } from '../games/quiz.js';
@@ -10,6 +12,8 @@ import { handsToday } from '../app/ctx.js';
 
 export default async function play(el, parts, ctx) {
   const [g] = parts;
+  if (g === 'practice') return practiceTable(el, ctx);
+  if (g === 'count') return countTrainer(el, ctx);
   if (g === 'live') return liveTable(el, ctx);
   if (g === 'gravity') return gravityTable(el, ctx);
   if (g === 'trap') return trap(el, ctx);
@@ -27,6 +31,8 @@ async function hub(el, ctx) {
   el.innerHTML = `<h1>Play</h1>
     <div class="card"><div class="row"><div class="grow"><div class="small dim">Hands today</div><div class="big num">${today}</div></div><div class="grow"><div class="small dim">Session loss limit</div><div class="big num">$${s.lossLimit}</div></div></div>
       <div class="small dim" style="margin-top:6px">${preset ? preset.name + ' · ' : ''}${describeRules(ctx.rules)}${preset && preset.unverified ? ' <span class="pill due">rules unverified</span>' : ''}</div></div>
+    <a class="card link" href="#/play/practice"><h3>Practice Table</h3><div class="small dim">Reps with no money on the line. Choose the hands you want (weak spots, stiffs, soft hands, pairs, doubles), get the reason after every decision, take back a mistake. Real shoe with a cut card.</div></a>
+    <a class="card link" href="#/play/count"><h3>Count Trainer</h3><div class="small dim">Hi-Lo: flash cards, keep the running count, then convert to a true count. Optional — it also makes the shoe feel real.</div></a>
     <a class="card link" href="#/play/live"><h3>Live Table</h3><div class="small dim">Real rounds with a simulated bankroll. Every decision graded; cost of your mistakes in dollars; the stop-rule is enforced.</div></a>
     <a class="card link" href="#/play/gravity"><h3>Gravity Blackjack</h3><div class="small dim">The real ICONIC21 game: all four side bets, real multiplier drops, and Practice + Rewind on the main hand.</div></a>
     <a class="card link" href="#/play/trap"><h3>Trap Mode</h3><div class="small dim">Insurance, even money, multiplier-drop side bets. The only way to win is to decline every one. Best run: <b>${best.trap || 0}</b></div></a>

@@ -170,3 +170,8 @@ label.field > :last-child { margin-top: 5px; }
 canvas, svg.chart { width: 100%; display: block; }
 .streak { font-weight: 800; }
 .pop { animation: pop .25s ease-out; } @keyframes pop { 0% { transform: scale(.9); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+
+/* Strategy Guide */
+.grid.guide .c { aspect-ratio: auto; min-height: 30px; font-size: 13px; border: 0; position: relative; }
+.grid.guide .c small { font-size: 9px; font-weight: 700; opacity: .75; margin-left: 1px; text-transform: lowercase; }
+.grid.guide .c.chg { outline: 2px solid #fff; outline-offset: -2px; }

@@ -10,6 +10,7 @@ const ROUTES = {
   learn: () => import('../screens/learn.js'),
   drill: () => import('../screens/drill.js'),
   play: () => import('../screens/play.js'),
+  guide: () => import('../screens/guide.js'),
   stats: () => import('../screens/stats.js'),
   cert: () => import('../screens/cert.js'),
 };

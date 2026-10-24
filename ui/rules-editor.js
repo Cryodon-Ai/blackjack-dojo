@@ -16,7 +16,7 @@ export function openRulesEditor(current, { title = 'Table rules', onSave } = {})
     root.innerHTML = `
       <div class="small dim">Presets</div>
       <div class="row wrap" style="margin:6px 0 10px">${PRESETS.map((p) => `<button class="btn small ghost" data-p="${p.id}">${p.name}${p.unverified ? ' ⚠' : ''}</button>`).join('')}</div>
-      <label class="field">Decks<select id="decks">${[1, 2, 4, 6, 8].map((d) => `<option ${r.decks === d ? 'selected' : ''} value="${d}">${d}</option>`).join('')}</select></label>
+      <label class="field">Decks<select id="decks">${[1, 2, 3, 4, 5, 6, 7, 8].map((d) => `<option ${r.decks === d ? 'selected' : ''} value="${d}">${d}${d === 6 ? ' (typical online)' : ''}</option>`).join('')}</select></label>
       <label class="field">Blackjack pays<select id="bj"><option value="1.5" ${r.blackjackPays === 1.5 ? 'selected' : ''}>3:2</option><option value="1.2" ${r.blackjackPays === 1.2 ? 'selected' : ''}>6:5</option><option value="1" ${r.blackjackPays === 1 ? 'selected' : ''}>1:1</option></select></label>
       <label class="field">Doubling<select id="dbl"><option value="any" ${r.doubleRestriction === 'any' ? 'selected' : ''}>Any first two cards</option><option value="9-11" ${r.doubleRestriction === '9-11' ? 'selected' : ''}>Hard 9–11 only</option></select></label>
       <div class="toggle"><span>Dealer hits soft 17 (H17)</span><input type="checkbox" id="h17" ${r.dealerHitsSoft17 ? 'checked' : ''}></div>

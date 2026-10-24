@@ -34,10 +34,17 @@ const PEEK_CODE = { both: 'B', ace: 'A', none: 'N' };
 export const gridKey = (r) => [r.decks, +r.dealerHitsSoft17, +r.doubleAfterSplit, +r.resplitAces, r.surrender === 'late' ? 1 : 0, PEEK_CODE[r.peekOn], r.doubleRestriction === 'any' ? 'A' : 'N'].join('|');
 
 // Returns house edge in percent (positive = house), or null if the rule set is outside the grid.
+// Deck counts between grid points (3, 5, 7) are interpolated in 1/decks, which is how the edge scales.
+const GRID_DECKS = [1, 2, 4, 6, 8];
 export async function houseEdge(rulesIn) {
   const r = normalizeRules(rulesIn);
   const t = await loadEdges();
-  const base = t.edges[gridKey(r)];
+  let base = t.edges[gridKey(r)];
+  if (base === undefined && Number.isFinite(r.decks)) {
+    const lo = Math.max(...GRID_DECKS.filter((d) => d < r.decks)), hi = Math.min(...GRID_DECKS.filter((d) => d > r.decks));
+    const a = t.edges[gridKey({ ...r, decks: lo })], b = t.edges[gridKey({ ...r, decks: hi })];
+    if (a !== undefined && b !== undefined) base = a + (b - a) * ((1 / lo - 1 / r.decks) / (1 / lo - 1 / hi));
+  }
   if (base === undefined) return null;
   return base + bjCost(r.decks, r.blackjackPays);
 }

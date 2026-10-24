@@ -5,7 +5,9 @@
 
 import { Round } from '../engine/round.js';
 import { peeksOnUp, upLabel } from '../engine/rules.js';
-import { freshShoe, makeCard, shoeFromCounts, handLabel } from '../ui/cards.js';
+import { makeCard, shoeFromCounts, handLabel } from '../ui/cards.js';
+import { Shoe } from '../app/shoe.js';
+import { shoeSettings, shoeLine, prepareShoe, openShoeSheet, askCount } from '../ui/shoe-settings.js';
 import { renderTable, renderActionBar, illegalReason, renderVerdict, toast } from '../ui/hand.js';
 import { engine } from '../app/engine-client.js';
 import { explain, ACTION_NAME, evKey, usd100, signed } from '../app/feedback.js';
@@ -62,7 +64,8 @@ export function liveTable(el, ctx) {
     el.innerHTML = `<div class="topbar"><button class="btn small ghost" id="end">End session</button><div class="grow"></div><div class="right small dim" id="hd1"></div></div>
       <div id="hud" class="small"></div><div id="tbl"></div><div id="panel"></div><div class="actionbar" id="bar"></div>`;
     const $ = (id) => el.querySelector('#' + id);
-    const shoeFor = () => freshShoe(rules.decks);
+    const SH = new Shoe(rules.decks, shoeSettings(ctx.profile));
+    S.cnt = { asked: 0, right: 0 };
 
     const hud = () => {
       const exp = edge === null ? null : S.wagered * edge / 100;
@@ -72,6 +75,8 @@ export function liveTable(el, ctx) {
           <span class="small">Cost of your mistakes: <b class="num ${S.leaked + S.insCost > 0.004 ? 'bad' : 'ok'}">$${(S.leaked + S.insCost).toFixed(2)}</b></span>
           <span class="small dim">Accuracy <b class="num">${S.decisions ? Math.round(S.right / S.decisions * 100) : 100}%</b></span></div>
           <div class="small dim" style="margin-top:2px">This table's price: ~${$money(-(exp || 0))} expected on $${S.wagered.toFixed(0)} wagered (${edge === null ? '—' : edge.toFixed(2)}% edge). Expected result of the hands dealt: <span class="num">${$money(S.expected)}</span>.</div></div>`;
+      $('hud').insertAdjacentHTML('beforeend', `<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px"><span class="small dim">${shoeLine(SH, ctx.profile)}</span><button class="btn small ghost" id="shoebtn">Shoe</button></div>`);
+      $('shoebtn').onclick = () => openShoeSheet(ctx, SH, { onChange: hud });
     };
 
     async function betPhase() {
@@ -94,10 +99,10 @@ export function liveTable(el, ctx) {
       });
     }
 
-    const showTable = (r, { hide, active = -1, newFrom } = {}) => renderTable($('tbl'), {
+    const showTable = (r, { hide, active = -1, newFrom } = {}) => (hide ? 0 : SH.revealHole(), renderTable($('tbl'), {
       dealer: r.dealer, hideHole: hide, newFrom,
       hands: r.hands.map((h, i) => ({ cards: h.cards, active: i === active, note: h.doubled ? 'doubled' : h.surrendered ? 'surrendered' : '' })),
-    });
+    }));
 
     async function askOffer(html, title) {
       $('panel').innerHTML = `<div class="banner"><b>${title}</b><br>${html}</div>`;
@@ -111,8 +116,10 @@ export function liveTable(el, ctx) {
       if (rebet) { hud(); $('panel').innerHTML = ''; } else await betPhase();
       if (stopped) return;
       const bet = S.bet;
-      const shoe = shoeFor();
+      prepareShoe(SH, ctx.profile);
+      const shoe = SH;
       const r = new Round(rules, () => shoe.draw()).deal();
+      shoe.hideHole(r.dealer[1].v);
       const checkpoints = [];   // rewind mode: one entry per deviation from best play, captured before it's acted on
       S.hands++; S.wagered += bet;
       const up = r.up.v;
@@ -250,6 +257,7 @@ export function liveTable(el, ctx) {
         S.overridden = true;
       }
       if (S.bank < cfg.unit) return endSession(S, cfg, 'broke');
+      if (shoeSettings(ctx.profile).count === 'quiz' && S.hands % 3 === 0) await askCount(SH, S.cnt);
       const next = await summaryLoop();
       $('panel').innerHTML = '';
       return round(next === 'rebet');
@@ -337,6 +345,7 @@ export function liveTable(el, ctx) {
           <tr><td>Table price (${edge === null ? '—' : edge.toFixed(2)}% edge)</td><td class="num">${$money(-price)}</td></tr>
           <tr><td>Expected result of the hands dealt</td><td class="num">${$money(S2.expected)}</td></tr>
           <tr><td>Cost of your mistakes</td><td class="num bad">${$money(-(S2.leaked + S2.insCost))}</td></tr>
+          ${S2.cnt && S2.cnt.asked ? `<tr><td>Count checks right</td><td class="num">${S2.cnt.right}/${S2.cnt.asked}</td></tr>` : ''}
           <tr><td>Actual result</td><td class="num">${$money(S2.pnl)}</td></tr></table>
           <p class="small dim">The gap between expected and actual is variance — luck. Perfect play does not remove it and does not turn the table price positive.</p></div>
         <button class="btn primary block" id="again">New session</button><div class="gap"></div><a class="btn block ghost" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="#/play">Done</a>`;

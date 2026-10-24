@@ -2,7 +2,7 @@
 // Ranks throughout the engine: 1 = Ace, 2..9 = pip cards, 10 = any ten-valued card.
 
 export const DEFAULT_RULES = Object.freeze({
-  decks: 6,                    // 1 | 2 | 4 | 6 | 8 | Infinity
+  decks: 6,                    // 1..8 | Infinity
   dealerHitsSoft17: false,     // false = S17
   doubleAfterSplit: true,      // DAS
   resplitAces: false,
@@ -25,7 +25,7 @@ export const REFERENCE_RULES = Object.freeze({
   blackjackPays: 1.5,
 });
 
-const DECKS = [1, 2, 4, 6, 8, Infinity];
+const DECKS = [1, 2, 3, 4, 5, 6, 7, 8, Infinity];
 
 export function normalizeRules(input = {}) {
   const r = { ...DEFAULT_RULES, ...input };
