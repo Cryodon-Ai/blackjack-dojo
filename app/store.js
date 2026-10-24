@@ -15,7 +15,7 @@ export const defaultProfile = () => ({
   guided: {},                // tier -> guided-hands completed
   lessonSeen: {},            // tier -> true
   settings: {
-    lossLimit: 100, hapticsOn: true, flashSeconds: 2.0, reveal: false,
+    lossLimit: 100, hapticsOn: true, flashSeconds: 17, reveal: false,
     coach: false, mode: 'off', bankroll: 500, unit: 5,   // mode: 'off' | 'coach' | 'rewind'
   },
   bests: {},                 // game -> personal best
