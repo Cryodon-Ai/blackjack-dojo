@@ -45,7 +45,7 @@ async function hub(el, ctx) {
     ${prog < 350 ? `<div class="small dim" id="prefill">Warming up the engine for these rules… <span class="num">${prog}/350</span> cells ready. Drills work while it fills.</div>` : ''}
     ${due ? `<a class="card due link" href="#/drill/due"><b class="due">${due} due for review</b><div class="small dim">Spaced repetition queue — oldest first.</div></a>` : `<div class="card"><div class="dim small">Nothing due right now.</div></div>`}
     <h2>Mini-games</h2>
-    <a class="card link" href="#/drill/flash"><h3>Flash Drill</h3><div class="small dim">Hand appears, ring counts down from 2.0 s, tap the action. Timer tightens as you improve.</div></a>
+    <a class="card link" href="#/drill/flash"><h3>Flash Drill</h3><div class="small dim">Hand appears, ring counts down from 17 s, tap the action. Timer tightens as you improve, never below 17 s.</div></a>
     <a class="card link" href="#/drill/strikes"><h3>Three Strikes</h3><div class="small dim">Endless hands. Three errors ends the run. Best: <b>${best.strikes || 0}</b></div></a>
     <a class="card link" href="#/drill/blackout"><h3>Chart Blackout</h3><div class="small dim">Rebuild the strategy grid from memory. Scored on accuracy and time.</div></a>
     <a class="card link" href="#/drill/eye"><h3>Dealer's Eye</h3><div class="small dim">Given only the upcard, predict the bust percentage.</div></a>
@@ -61,11 +61,12 @@ async function hub(el, ctx) {
 function queueFor(rules, pool) { const q = new DrillQueue(pool, rules); return { q, source: { next: () => q.next() } }; }
 
 async function flash(el, ctx) {
-  const rules = ctx.rules, base = ctx.profile.settings.flashSeconds || 2.0;
+  const FLOOR = 17; // seconds: the shortest clock Flash Drill will ever use
+  const rules = ctx.rules, base = Math.max(FLOOR, ctx.profile.settings.flashSeconds || FLOOR);
   const { q, source } = queueFor(rules, POOLS.all());
   const ctl = startRunner(el, {
     mode: 'flash', title: 'Flash Drill', rules, queue: q, source, autoAdvanceMs: 550, total: 25,
-    seconds: (st) => { if (st.n < 5) return base; const acc = st.correct / st.n; return +(base - (base - 1.2) * clamp((acc - 0.75) / 0.2, 0, 1)).toFixed(2); },
+    seconds: (st) => { if (st.n < 5) return base; const acc = st.correct / st.n; return +(base - (base - FLOOR) * clamp((acc - 0.75) / 0.2, 0, 1)).toFixed(2); },
     restart: () => flash(el, ctx),
   });
   return () => ctl.stop();

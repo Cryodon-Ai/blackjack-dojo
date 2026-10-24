@@ -207,7 +207,7 @@ async function settings(body, ctx) {
       <label class="field">Session bankroll ($)<input type="number" id="bk" inputmode="decimal" value="${s.bankroll}"></label>
       <label class="field">Unit bet ($)<input type="number" id="ub" inputmode="decimal" value="${s.unit}"></label></div>
     <div class="card"><h3>Drills</h3>
-      <label class="field">Flash Drill starting clock: <b id="fsv">${s.flashSeconds.toFixed(1)}s</b> (tightens to 1.2s as you improve)<input type="range" id="fs" min="1.2" max="4" step="0.1" value="${s.flashSeconds}"></label>
+      <label class="field">Flash Drill starting clock: <b id="fsv">${Math.max(17, s.flashSeconds).toFixed(1)}s</b> (never below 17s)<input type="range" id="fs" min="17" max="30" step="0.5" value="${Math.max(17, s.flashSeconds)}"></label>
       <label class="field">Live Table feedback mode<select id="mode">
         <option value="off" ${s.mode === 'off' ? 'selected' : ''}>Off — no feedback</option>
         <option value="coach" ${s.mode === 'coach' ? 'selected' : ''}>Coach — blocks wrong moves and explains</option>
