@@ -79,6 +79,10 @@ await page.waitForTimeout(2500);
 ok(await page.evaluate(() => window.__fly >= 2), 'new cards get a shoe-to-seat flight');
 ok(await page.evaluate(() => /Dealer (shows|has)/.test(document.querySelector('.dealer-say').textContent)), 'dealer announces the hand');
 
+ok(await page.evaluate(() => !!document.querySelector('#card-defs #cK') && !!document.querySelector('#card-defs #cardback') && !!document.querySelector('.dealer-fig .eyes')), 'card art defs and the dealer face are present');
+await page.evaluate(() => { const c = document.documentElement; c.dataset.back = 'blue'; });
+ok(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--cb1').trim() === '#1a2f7a'), 'card back colour follows the setting');
+
 // Preset switch + keyboard
 await go('', 1200);
 await page.evaluate(() => document.querySelector('#presets button[data-p="gravity"]').click()); await page.waitForTimeout(3000);
@@ -93,6 +97,9 @@ ok(await page.evaluate(() => !!document.querySelector('.actionbar .act')), 'Ente
 await page.goto(base + '#/stats/settings'); await page.waitForTimeout(1000);
 await page.evaluate(() => { const c = document.querySelector('#lg'); c.checked = true; c.dispatchEvent(new Event('change')); }); await page.waitForTimeout(300);
 ok(await page.evaluate(() => document.documentElement.classList.contains('lg')), 'large text toggle applies');
+await page.evaluate(() => { const c = document.querySelector('#dc'); c.value = 'elena'; c.dispatchEvent(new Event('change')); }); await page.waitForTimeout(300);
+await page.goto(base + '#/lab/gut'); await page.waitForTimeout(2500);
+ok(await page.evaluate(() => /ELENA/.test(document.querySelector('.dealer-fig').textContent)), 'dealer choice changes the dealer');
 
 console.log(`${pass} passed, ${fail} failed`); if (errs.length) console.log('errors:', [...new Set(errs)].slice(0, 8));
 await browser.close(); server.close();

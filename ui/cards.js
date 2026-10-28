@@ -1,8 +1,10 @@
 // Inline-SVG playing cards. No image assets, no emoji. Card model: { v: 1..10, label, suit }.
 // v is the engine rank (1 = ace, 10 = any ten-valued card); label is what is printed.
 
+import { ensureCardDefs, courtArt } from './cardart.js';
+
 export const SUITS = ['s', 'h', 'd', 'c'];
-const RED = '#e23a55', BLACK = '#14161c';
+const RED = '#c9253b', BLACK = '#15171d';
 const isRed = (s) => s === 'h' || s === 'd';
 
 // Suit glyphs drawn in a 24x24 box, centred at (12,12).
@@ -34,10 +36,9 @@ const PIPS = {
 };
 
 export function cardSVG(card, { faceDown = false, cls = '' } = {}) {
+  ensureCardDefs();
   if (faceDown || !card) {
-    return `<svg class="pcard ${cls}" viewBox="0 0 100 140" role="img" aria-label="face-down card">
-      <defs><pattern id="bk" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="10" fill="#1a2140"/><path d="M0 5h10M5 0v10" stroke="#2c376b" stroke-width="1.4"/></pattern></defs>
-      <rect x="1.5" y="1.5" width="97" height="137" rx="9" fill="#f4f4f6"/><rect x="7" y="7" width="86" height="126" rx="5" fill="url(#bk)"/></svg>`;
+    return `<svg class="pcard ${cls}" viewBox="0 0 100 140" role="img" aria-label="face-down card"><use href="#cardback" width="100" height="140"/></svg>`;
   }
   const { label, suit } = card;
   const col = isRed(suit) ? RED : BLACK;
@@ -45,22 +46,26 @@ export function cardSVG(card, { faceDown = false, cls = '' } = {}) {
   let center = '';
   const face = label === 'J' || label === 'Q' || label === 'K';
   if (face) {
-    center = `<rect x="24" y="22" width="52" height="96" rx="7" fill="none" stroke="${col}" stroke-width="2" opacity=".55"/>
-      <text x="50" y="82" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="46" font-weight="700" fill="${col}">${label}</text>
-      ${pip(suit, 50, 32, 14, 0)}${pip(suit, 50, 108, 14, 1)}`;
+    // Framed court card: coloured panel, diagonal split with the figure twice, corner suit pips.
+    center = `<rect x="20" y="20" width="60" height="100" rx="4" fill="#fbf4de" stroke="#b9954a" stroke-width="1.3"/>
+      <rect x="22" y="22" width="56" height="96" rx="2.5" fill="none" stroke="${col}" stroke-opacity=".35" stroke-width=".7"/>
+      <line x1="22" y1="70" x2="78" y2="70" stroke="#b9954a" stroke-width=".7"/>${courtArt(label)}
+      ${pip(suit, 71.5, 29, 9, 0)}${pip(suit, 28.5, 111, 9, 1)}`;
   } else if (label === 'A') {
-    center = pip(suit, 50, 70, 46, 0);
+    center = `<circle cx="50" cy="70" r="29" fill="none" stroke="${col}" stroke-opacity=".12" stroke-width="1.5"/>${pip(suit, 50, 70, 50, 0)}`;
   } else {
     const layout = PIPS[label === '10' ? 10 : n] || [];
     center = layout.map(([x, y, f]) => pip(suit, x, y, 19, f)).join('');
   }
   const idx = label;
   const corner = (rot) => `<g transform="${rot ? 'rotate(180 50 70)' : ''}">
-      <text x="11" y="24" font-family="-apple-system, 'SF Pro Display', system-ui, sans-serif" font-size="${idx === '10' ? 19 : 22}" font-weight="800" fill="${col}" letter-spacing="-1">${idx}</text>
-      ${pip(suit, 15, 36, 12, 0)}</g>`;
+      <text x="11.5" y="24" font-family="Georgia, 'Times New Roman', serif" font-size="${idx === '10' ? 19 : 23}" font-weight="700" fill="${col}" letter-spacing="${idx === '10' ? -2 : -.5}">${idx}</text>
+      ${pip(suit, 15.5, 36, 11, 0)}</g>`;
   return `<svg class="pcard ${cls}" viewBox="0 0 100 140" role="img" aria-label="${label} of ${{ s: 'spades', h: 'hearts', d: 'diamonds', c: 'clubs' }[suit]}">
-    <rect x="1.5" y="1.5" width="97" height="137" rx="9" fill="#f7f7f9" stroke="#cfd0d6" stroke-width="1"/>
-    ${corner(false)}${corner(true)}${center}</svg>`;
+    <rect x="1.5" y="1.5" width="97" height="137" rx="9" fill="url(#paper)" stroke="rgba(0,0,0,.38)" stroke-width="1"/>
+    <rect x="4" y="4" width="92" height="132" rx="7" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1"/>
+    ${corner(false)}${corner(true)}${center}
+    <path d="M10 1.5h80a8.5 8.5 0 0 1 8.5 8.5v10Q60 26 1.5 12V10A8.5 8.5 0 0 1 10 1.5z" fill="url(#gloss)" opacity=".45"/></svg>`;
 }
 
 // ---- card construction --------------------------------------------------------------------

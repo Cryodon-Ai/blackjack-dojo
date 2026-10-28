@@ -3,13 +3,8 @@ import { ctx } from './ctx.js';
 import { srs } from './srs.js';
 import { engine } from './engine-client.js';
 import { toast } from '../ui/hand.js';
+import { applyLook } from './look.js';
 
-export function applyLook(s) {
-  const h = document.documentElement;
-  h.classList.toggle('lg', !!s.largeText);
-  h.classList.toggle('nodealer', s.showDealer === false);
-  h.dataset.felt = s.felt || 'green';
-}
 const screen = () => document.getElementById('screen');
 let cleanup = null, token = 0;
 

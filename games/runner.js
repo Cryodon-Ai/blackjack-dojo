@@ -9,7 +9,7 @@ import { randomRanks } from '../curriculum/cells.js';
 import { srs } from '../app/srs.js';
 import { store } from '../app/store.js';
 import { journal } from '../app/journal.js';
-import { cue } from '../app/feel.js';
+import { cue, confetti } from '../app/feel.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -118,6 +118,7 @@ export function startRunner(root, opts) {
     const key = chosen ? evKey(chosen) : null;
     const evLoss = correct || timeout ? 0 : Math.max(0, res.ev[evKey(res.action)] - (res.ev[key] ?? res.ev[evKey(res.action)]));
     renderTable($('tbl'), { variant: 'drill', dealer: cur.dealer, hideHole: false, hands: [{ cards: cur.cards, active: true }], newFrom: { dealer: 1, hands: [cur.cards.length] } });
+    { const felt = $('tbl').querySelector('.felt'); if (felt) felt.classList.add(correct ? 'glow-ok' : 'glow-bad'); }
     markActions($('bar'), chosen, res.action);
     $('bar').querySelectorAll('.act').forEach((b) => b.classList.add('off'));
 
@@ -225,6 +226,7 @@ export function startRunner(root, opts) {
     if (o.recordSession && st.n) await store.addSession({ date: Date.now(), mode: o.mode, handsPlayed: st.n, accuracy: acc, evLost: st.evLost, bankrollDelta: 0 });
     let extra = '';
     if (o.onFinish) extra = (await o.onFinish(st)) || '';
+    if (st.n >= 10 && acc >= 0.95) confetti();
     root.innerHTML = `<h1>${esc(o.title || 'Session')} complete</h1>
       <div class="stat3"><div class="card"><div class="v ${acc >= 0.95 ? 'ok' : acc < 0.8 ? 'bad' : ''}">${(acc * 100).toFixed(0)}%</div><div class="k">Accuracy</div></div>
       <div class="card"><div class="v">${st.best}</div><div class="k">Best streak</div></div>

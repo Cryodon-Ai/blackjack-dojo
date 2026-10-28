@@ -33,3 +33,14 @@ export function deal(n = 1) {
     }
   } catch { /* audio unavailable */ }
 }
+
+// A short burst of confetti for a clean session.
+export function confetti() {
+  if (typeof document === 'undefined' || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+  const box = document.createElement('div');
+  box.className = 'confetti';
+  const cols = ['#46e6b0', '#ffb020', '#ff5470', '#6aa8ff', '#b46bff', '#fff'];
+  box.innerHTML = Array.from({ length: 40 }, () => `<i style="left:${Math.random() * 100}%;background:${cols[Math.floor(Math.random() * cols.length)]};animation-delay:${Math.random() * 0.5}s;animation-duration:${1.6 + Math.random() * 1.2}s;--dx:${Math.round(Math.random() * 120 - 60)}px"></i>`).join('');
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 3500);
+}

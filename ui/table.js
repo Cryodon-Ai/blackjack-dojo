@@ -1,15 +1,17 @@
-// The table scene: felt, rail, dealer, shoe, betting circle. Every game draws through renderTable, so
-// the practice room, drills, Live Table and Gravity all sit at a real-looking table with a dealer who
-// deals from the shoe. Pure SVG + CSS, no image assets.
+// The table scene: padded rail, felt, a dealer behind the table, the shoe, the betting spot. Every game
+// draws through renderTable, so the practice room, drills, Live Table and Gravity all sit at a real-looking
+// table with a dealer who deals from the shoe. Pure SVG + CSS, no image assets.
 //
 // state: { dealer:[cards], hideHole, hands:[{cards, active, note}], newFrom:{dealer, hands:[n]},
 //          variant: 'live' | 'practice' | 'drill', bet?: number }
 
 import { cardSVG, handValue } from './cards.js';
+import { dealerSVG } from './dealer.js';
 import { ctx } from '../app/ctx.js';
 import { deal as dealSound } from '../app/feel.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const STEP = 300;   // ms between dealt cards; the dealer's arm cycle matches it
 
 function badge(cards) {
   const h = handValue(cards.map((c) => c.v));
@@ -19,23 +21,10 @@ function badge(cards) {
   return `<div class="badge">${h.total}</div>`;
 }
 
-const NAMETAG = { live: 'DEALER', practice: 'COACH', drill: 'DEALER' };
-
-function dealerSVG(variant) {
-  return `<svg class="dealer-fig" viewBox="0 0 84 92" aria-hidden="true">
-    <path class="vest" d="M4 92C4 64 22 56 42 56s38 8 38 36z"/>
-    <path d="M31 58 42 80 53 58z" fill="#f2f2f4"/>
-    <path d="M42 62 33 57v10zM42 62l9-5v10z" class="bow"/><circle cx="42" cy="62" r="2.4" class="bow"/>
-    <rect x="52" y="74" width="20" height="8" rx="2" fill="#f2f2f4" opacity=".92"/><text x="62" y="80.4" text-anchor="middle" font-size="5" font-weight="800" fill="#222" font-family="system-ui,sans-serif">${NAMETAG[variant] || 'DEALER'}</text>
-    <g class="head"><circle cx="42" cy="31" r="17" fill="#e2b890"/>
-      <path d="M25 29c0-12 8-18 17-18s17 6 17 18c-4-6-10-9-17-9s-13 3-17 9z" fill="#2b221c"/>
-      <circle cx="36" cy="33" r="1.7" fill="#2b221c"/><circle cx="48" cy="33" r="1.7" fill="#2b221c"/>
-      <path d="M36 41q6 5 12 0" fill="none" stroke="#7a4a35" stroke-width="1.8" stroke-linecap="round"/></g>
-    <g class="arm"><rect x="62" y="64" width="11" height="26" rx="5.5" class="vest"/><circle cx="67.5" cy="90" r="5.5" fill="#e2b890"/></g>
-  </svg>`;
-}
-
-const SHOE_SVG = `<svg class="shoe" viewBox="0 0 64 54" aria-hidden="true"><path d="M3 20 44 8l17 12v26L16 52 3 44z" fill="#23262e"/><path d="M3 20 44 8l17 12-42 12z" fill="#34384a"/><path d="M16 32 61 20v6L16 38z" fill="#f4f4f6"/><path d="M16 38 61 26v3L16 41z" fill="#c9cad2"/></svg>`;
+const SHOE_SVG = `<svg class="shoe" viewBox="0 0 70 58" aria-hidden="true"><defs><linearGradient id="shg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a4f63"/><stop offset="1" stop-color="#1c1e27"/></linearGradient></defs>
+  <path d="M3 22 48 8l19 13v28L18 56 3 47z" fill="url(#shg)" stroke="#000" stroke-opacity=".5"/>
+  <path d="M3 22 48 8l19 13-46 14z" fill="#5b6178"/><path d="M18 35 67 21v7L18 42z" fill="#f4f4f6"/><path d="M18 42 67 28v3L18 45z" fill="#c4c6d0"/>
+  <path d="M18 35 67 21" stroke="#fff" stroke-width="1" opacity=".7"/><rect x="21" y="47" width="14" height="4" rx="1.5" fill="#c9a24a" opacity=".8" transform="skewY(-16) translate(0 9)"/></svg>`;
 
 function arcText(variant) {
   let line = 'BLACKJACK PAYS 3 TO 2';
@@ -48,8 +37,8 @@ function arcText(variant) {
   return `<svg class="arc" viewBox="0 0 360 46" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><defs><path id="arcp" d="M10 6Q180 40 350 6"/></defs><text><textPath href="#arcp" startOffset="50%" text-anchor="middle">${esc(line)}</textPath></text></svg>`;
 }
 
-const chip = (c, dy) => `<ellipse class="chip ${c}" cx="20" cy="${dy}" rx="14" ry="5.5"/>`;
-const CHIPS = `<svg class="chips" viewBox="0 0 40 30" aria-hidden="true">${chip('c1', 24)}${chip('c2', 20)}${chip('c3', 16)}${chip('c1', 12)}</svg>`;
+const chip = (c, dy) => `<ellipse class="chip-side ${c}" cx="20" cy="${dy + 2.4}" rx="14" ry="5.6"/><ellipse class="chip ${c}" cx="20" cy="${dy}" rx="14" ry="5.6"/><ellipse class="chip-ring" cx="20" cy="${dy}" rx="10.6" ry="4.1"/>`;
+const CHIPS = `<svg class="chips" viewBox="0 0 40 34" aria-hidden="true">${chip('c1', 27)}${chip('c2', 23)}${chip('c3', 19)}${chip('c1', 15)}${chip('c2', 11)}</svg>`;
 
 function dealerLine(state) {
   const cards = state.dealer;
@@ -58,6 +47,11 @@ function dealerLine(state) {
   if (h.bust) return 'Dealer <b class="bad">busts</b>';
   if (cards.length === 2 && h.total === 21) return 'Dealer has <b>blackjack</b>';
   return `Dealer has <b>${h.total}</b>`;
+}
+function moodOf(state) {
+  if (state.hideHole) return '';
+  const h = handValue(state.dealer.map((c) => c.v));
+  return h.bust ? 'bust' : state.dealer.length === 2 && h.total === 21 ? 'bj' : '';
 }
 
 export function renderTable(el, state) {
@@ -75,17 +69,21 @@ export function renderTable(el, state) {
     return `<div class="hand ${h.active ? 'active' : ''}"><div class="cards">${cs}</div>${badge(h.cards)}${h.note ? `<div class="small dim">${esc(h.note)}</div>` : ''}</div>`;
   }).join('');
   const bet = state.bet ? `<div class="bet-amt num">$${state.bet}</div>` : '';
+  const char = (ctx.profile && ctx.profile.settings && ctx.profile.settings.dealerChar) || 'marcus';
 
   el.innerHTML = `<div class="felt ${variant}">
-    <div class="rail"></div>
-    <div class="dealer-zone">
-      <div class="dealer-side">${dealerSVG(variant)}<div class="dealer-say small">${dealerLine(state)}</div></div>
-      <div class="seat dseat"><div class="cards">${dealerHTML}</div>${state.hideHole ? `<div class="badge dim">${state.dealer[0].v === 1 ? 'A' : state.dealer[0].v}</div>` : badge(state.dealer)}</div>
+    <div class="spot"></div>
+    <div class="dealer-stage">
+      ${dealerSVG(char, { practice: variant === 'practice' }).replace('<svg class="dealer-fig"', `<svg data-mood="${moodOf(state)}" class="dealer-fig"`)}
       <div class="shoe-side">${SHOE_SVG}</div>
+      <div class="dealer-say small">${dealerLine(state)}</div>
+      <div class="seat dseat"><div class="cards">${dealerHTML}</div></div>
+      <div class="dbadge">${state.hideHole ? `<div class="badge dim">${state.dealer[0].v === 1 ? 'A' : state.dealer[0].v}</div>` : badge(state.dealer)}</div>
     </div>
     ${arcText(variant)}
     <div class="seat pseat">${multi ? `<div class="split-hands">${handsHTML}</div>` : handsHTML}</div>
     <div class="bet-spot"><div class="circle">${bet}</div>${CHIPS}</div>
+    <div class="rail"></div>
   </div>`;
   animateDeal(el);
 }
@@ -98,18 +96,20 @@ function animateDeal(el) {
   const s = (ctx.profile && ctx.profile.settings) || {};
   if (s.dealAnim === false || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { fresh.forEach((c) => c.classList.remove('deal', 'flip')); return; }
   const shoe = el.querySelector('.shoe').getBoundingClientRect();
-  const sx = shoe.left + shoe.width * 0.35, sy = shoe.top + shoe.height * 0.35;
+  const sx = shoe.left + shoe.width * 0.3, sy = shoe.top + shoe.height * 0.35;
   const order = fresh.filter((c) => c.classList.contains('deal')).sort((a, b) => (Number(a.dataset.n) - Number(b.dataset.n)) || (a.dataset.seat === 'p' ? -1 : 1) - (b.dataset.seat === 'p' ? -1 : 1));
   order.forEach((c, k) => {
     const r = c.getBoundingClientRect();
     c.style.setProperty('--sx', `${Math.round(sx - (r.left + r.width / 2))}px`);
     c.style.setProperty('--sy', `${Math.round(sy - (r.top + r.height / 2))}px`);
     c.style.setProperty('--sr', `${-25 + (k % 2) * 40}deg`);
-    c.style.setProperty('--d', `${k * 210}ms`);
+    c.style.setProperty('--d', `${k * STEP}ms`);
   });
   fresh.filter((c) => c.classList.contains('flip')).forEach((c) => c.style.setProperty('--d', '120ms'));
+  felt.style.setProperty('--n', String(Math.max(1, order.length)));
+  felt.style.setProperty('--step', `${STEP}ms`);
   felt.classList.add('dealing');
   dealSound(order.length);
   clearTimeout(felt._t);
-  felt._t = setTimeout(() => felt.classList.remove('dealing'), order.length * 210 + 700);
+  felt._t = setTimeout(() => felt.classList.remove('dealing'), order.length * STEP + 700);
 }

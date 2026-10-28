@@ -10,6 +10,7 @@ import { openSheet, confirmSheet } from '../ui/sheet.js';
 import { toast } from '../ui/hand.js';
 import { signed, ACTION_NAME, usd100, pct } from '../app/feedback.js';
 import { handsToday } from '../app/ctx.js';
+import { applyLook } from '../app/look.js';
 
 const VIEWS = [['heat', 'Heatmap'], ['chart', 'Chart'], ['sessions', 'Sessions'], ['certs', 'Certs'], ['data', 'Data'], ['settings', 'Settings']];
 const STAT_ROWS = ROWS.filter((r) => !(r.kind === 'hard' && r.total === 21));
@@ -217,6 +218,8 @@ async function settings(body, ctx) {
       <div class="toggle"><span>Vibrate on answers</span><input type="checkbox" id="hp" ${s.hapticsOn ? 'checked' : ''}></div>
       <div class="toggle"><span>Sound cues</span><input type="checkbox" id="sn" ${s.soundOn ? 'checked' : ''}></div>
       <label class="field">Table felt<select id="fl"><option value="green" ${(s.felt || 'green') === 'green' ? 'selected' : ''}>Green</option><option value="blue" ${s.felt === 'blue' ? 'selected' : ''}>Blue</option><option value="red" ${s.felt === 'red' ? 'selected' : ''}>Burgundy</option></select></label>
+      <label class="field">Dealer<select id="dc"><option value="marcus" ${(s.dealerChar || 'marcus') === 'marcus' ? 'selected' : ''}>Marcus</option><option value="elena" ${s.dealerChar === 'elena' ? 'selected' : ''}>Elena</option><option value="kai" ${s.dealerChar === 'kai' ? 'selected' : ''}>Kai</option></select></label>
+      <label class="field">Card back<select id="cb"><option value="red" ${(s.cardBack || 'red') === 'red' ? 'selected' : ''}>Crimson</option><option value="blue" ${s.cardBack === 'blue' ? 'selected' : ''}>Blue</option><option value="black" ${s.cardBack === 'black' ? 'selected' : ''}>Black</option></select></label>
       <div class="toggle"><span>Show the dealer and shoe</span><input type="checkbox" id="sd" ${s.showDealer === false ? '' : 'checked'}></div>
       <div class="toggle"><span>Animate dealing</span><input type="checkbox" id="da" ${s.dealAnim === false ? '' : 'checked'}></div>
       <div class="toggle"><span>Larger text</span><input type="checkbox" id="lg" ${s.largeText ? 'checked' : ''}></div>
@@ -231,9 +234,11 @@ async function settings(body, ctx) {
   body.querySelector('#dg').oninput = async (e) => { s.dailyGoal = Number(e.target.value); body.querySelector('#dgv').textContent = s.dailyGoal; await ctx.save(); };
   body.querySelector('#hp').onchange = async (e) => { s.hapticsOn = e.target.checked; await ctx.save(); };
   body.querySelector('#sn').onchange = async (e) => { s.soundOn = e.target.checked; await ctx.save(); };
-  const look = () => { const h = document.documentElement; h.classList.toggle('lg', !!s.largeText); h.classList.toggle('nodealer', s.showDealer === false); h.dataset.felt = s.felt || 'green'; };
+  const look = () => applyLook(s);
   body.querySelector('#lg').onchange = async (e) => { s.largeText = e.target.checked; look(); await ctx.save(); };
   body.querySelector('#fl').onchange = async (e) => { s.felt = e.target.value; look(); await ctx.save(); };
+  body.querySelector('#dc').onchange = async (e) => { s.dealerChar = e.target.value; await ctx.save(); };
+  body.querySelector('#cb').onchange = async (e) => { s.cardBack = e.target.value; look(); await ctx.save(); };
   body.querySelector('#sd').onchange = async (e) => { s.showDealer = e.target.checked; look(); await ctx.save(); };
   body.querySelector('#da').onchange = async (e) => { s.dealAnim = e.target.checked; await ctx.save(); };
 }
