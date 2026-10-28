@@ -9,9 +9,11 @@ import { variance, martingale, bonus } from '../money/tools.js';
 import { randomTrap } from '../curriculum/traps.js';
 import { describeRules, PRESETS } from '../app/presets.js';
 import { handsToday } from '../app/ctx.js';
+import baccarat from './baccarat.js';
 
 export default async function play(el, parts, ctx) {
   const [g] = parts;
+  if (g === 'baccarat') return baccarat(el, parts.slice(1), ctx);
   if (g === 'practice') return practiceTable(el, ctx);
   if (g === 'count') return countTrainer(el, ctx);
   if (g === 'live') return liveTable(el, ctx);
@@ -35,6 +37,7 @@ async function hub(el, ctx) {
     <a class="card link" href="#/play/count"><h3>Count Trainer</h3><div class="small dim">Hi-Lo: flash cards, keep the running count, then convert to a true count. Optional — it also makes the shoe feel real.</div></a>
     <a class="card link" href="#/play/live"><h3>Live Table</h3><div class="small dim">Real rounds with a simulated bankroll. Every decision graded; cost of your mistakes in dollars; the stop-rule is enforced.</div></a>
     <a class="card link" href="#/play/gravity"><h3>Gravity Blackjack</h3><div class="small dim">The real ICONIC21 game: all four side bets, real multiplier drops, and Practice + Rewind on the main hand.</div></a>
+    <a class="card link" href="#/play/baccarat"><h3>Baccarat</h3><div class="small dim">Learn the rules and the true cost of every bet, drill the draw rules, practise calling the draws, then sit at a table with a dealer and a scoreboard.</div></a>
     <a class="card link" href="#/play/trap"><h3>Trap Mode</h3><div class="small dim">Insurance, even money, multiplier-drop side bets. The only way to win is to decline every one. Best run: <b>${best.trap || 0}</b></div></a>
     <a class="card link" href="#/play/rules"><h3>Rules Panel Reader</h3><div class="small dim">Two tables, five seconds: which one is better, and what does the wrong choice cost per $100?</div></a>
     <h2>Money & Mind</h2>

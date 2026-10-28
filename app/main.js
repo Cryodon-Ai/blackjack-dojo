@@ -3,7 +3,7 @@ import { ctx } from './ctx.js';
 import { srs } from './srs.js';
 import { engine } from './engine-client.js';
 import { toast } from '../ui/hand.js';
-import { applyLook } from './look.js';
+import { applyLook, feltGrain } from './look.js';
 
 const screen = () => document.getElementById('screen');
 let cleanup = null, token = 0;
@@ -55,6 +55,7 @@ async function boot() {
   await ctx.load();
   await srs.load();
   applyLook(ctx.profile.settings);
+  feltGrain();
   window.addEventListener('hashchange', route);
   await route();
   // Fill the whole chart for the active rules in the background (lowest priority in the worker).

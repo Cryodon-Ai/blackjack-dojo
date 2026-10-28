@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "verify": "node engine/verify.js --quick",
-    "test": "node tools/lab-test.mjs",
-    "e2e": "node tools/lab-e2e.mjs",
+    "test": "node tools/lab-test.mjs && node tools/bacc-test.mjs",
+    "e2e": "node tools/lab-e2e.mjs && node tools/bacc-e2e.mjs",
     "stamp": "node tools/stamp.js"
   }
 }

@@ -38,7 +38,7 @@ const PIPS = {
 export function cardSVG(card, { faceDown = false, cls = '' } = {}) {
   ensureCardDefs();
   if (faceDown || !card) {
-    return `<svg class="pcard ${cls}" viewBox="0 0 100 140" role="img" aria-label="face-down card"><use href="#cardback" width="100" height="140"/></svg>`;
+    return `<svg class="pcard ${cls}" viewBox="0 0 100 140" overflow="visible" role="img" aria-label="face-down card"><rect x="3" y="6" width="97" height="137" rx="9" fill="#000" opacity=".2"/><rect x="2" y="3.5" width="97" height="137" rx="9" fill="#000" opacity=".22"/><use href="#cardback" width="100" height="140"/></svg>`;
   }
   const { label, suit } = card;
   const col = isRed(suit) ? RED : BLACK;
@@ -61,7 +61,8 @@ export function cardSVG(card, { faceDown = false, cls = '' } = {}) {
   const corner = (rot) => `<g transform="${rot ? 'rotate(180 50 70)' : ''}">
       <text x="11.5" y="24" font-family="Georgia, 'Times New Roman', serif" font-size="${idx === '10' ? 19 : 23}" font-weight="700" fill="${col}" letter-spacing="${idx === '10' ? -2 : -.5}">${idx}</text>
       ${pip(suit, 15.5, 36, 11, 0)}</g>`;
-  return `<svg class="pcard ${cls}" viewBox="0 0 100 140" role="img" aria-label="${label} of ${{ s: 'spades', h: 'hearts', d: 'diamonds', c: 'clubs' }[suit]}">
+  return `<svg class="pcard ${cls}" viewBox="0 0 100 140" role="img" overflow="visible" aria-label="${label} of ${{ s: 'spades', h: 'hearts', d: 'diamonds', c: 'clubs' }[suit]}">
+    <rect x="3" y="6" width="97" height="137" rx="9" fill="#000" opacity=".2"/><rect x="2" y="3.5" width="97" height="137" rx="9" fill="#000" opacity=".22"/>
     <rect x="1.5" y="1.5" width="97" height="137" rx="9" fill="url(#paper)" stroke="rgba(0,0,0,.38)" stroke-width="1"/>
     <rect x="4" y="4" width="92" height="132" rx="7" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1"/>
     ${corner(false)}${corner(true)}${center}

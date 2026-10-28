@@ -48,6 +48,11 @@ function dealerLine(state) {
   if (cards.length === 2 && h.total === 21) return 'Dealer has <b>blackjack</b>';
   return `Dealer has <b>${h.total}</b>`;
 }
+export const SHOE = SHOE_SVG;
+export function dealerFig(variant, mood = '') {
+  const char = (ctx.profile && ctx.profile.settings && ctx.profile.settings.dealerChar) || 'marcus';
+  return dealerSVG(char, { practice: variant === 'practice' }).replace('<svg class="dealer-fig"', `<svg data-mood="${mood}" class="dealer-fig"`);
+}
 function moodOf(state) {
   if (state.hideHole) return '';
   const h = handValue(state.dealer.map((c) => c.v));
@@ -70,26 +75,56 @@ export function renderTable(el, state) {
   }).join('');
   const bet = state.bet ? `<div class="bet-amt num">$${state.bet}</div>` : '';
   const char = (ctx.profile && ctx.profile.settings && ctx.profile.settings.dealerChar) || 'marcus';
-
+  const dealerPart = `<div class="cards">${dealerHTML}</div>`;
+  const badgePart = state.hideHole ? `<div class="badge dim">${state.dealer[0].v === 1 ? 'A' : state.dealer[0].v}</div>` : badge(state.dealer);
+  const handsPart = multi ? `<div class="split-hands">${handsHTML}</div>` : handsHTML;
+  const arc = arcText(variant);
+  const key = `${variant}|${char}|${arc}`;
+  const felt = el.firstElementChild;
+  if (felt && felt.classList.contains('felt') && el._tkey === key) {
+    // Same table as last time: swap only the parts that changed. Rebuilding the dealer, shoe and rail on every card is what made dealing choppy.
+    felt.classList.remove('glow-ok', 'glow-bad');
+    felt.querySelector('.dseat').innerHTML = dealerPart;
+    felt.querySelector('.dbadge').innerHTML = badgePart;
+    felt.querySelector('.pseat').innerHTML = handsPart;
+    felt.querySelector('.dealer-say').innerHTML = dealerLine(state);
+    felt.querySelector('.dealer-fig').setAttribute('data-mood', moodOf(state));
+    animateDeal(el);
+    return;
+  }
+  el._tkey = key;
   el.innerHTML = `<div class="felt ${variant}">
     <div class="spot"></div>
     <div class="dealer-stage">
-      ${dealerSVG(char, { practice: variant === 'practice' }).replace('<svg class="dealer-fig"', `<svg data-mood="${moodOf(state)}" class="dealer-fig"`)}
+      ${dealerFig(variant, moodOf(state))}
       <div class="shoe-side">${SHOE_SVG}</div>
       <div class="dealer-say small">${dealerLine(state)}</div>
-      <div class="seat dseat"><div class="cards">${dealerHTML}</div></div>
-      <div class="dbadge">${state.hideHole ? `<div class="badge dim">${state.dealer[0].v === 1 ? 'A' : state.dealer[0].v}</div>` : badge(state.dealer)}</div>
+      <div class="seat dseat">${dealerPart}</div>
+      <div class="dbadge">${badgePart}</div>
     </div>
-    ${arcText(variant)}
-    <div class="seat pseat">${multi ? `<div class="split-hands">${handsHTML}</div>` : handsHTML}</div>
+    ${arc}
+    <div class="seat pseat">${handsPart}</div>
     <div class="bet-spot"><div class="circle">${bet}</div>${CHIPS}</div>
     <div class="rail"></div>
   </div>`;
   animateDeal(el);
+  startBlink(el);
+}
+
+// The dealer blinks every few seconds from a timer: an endless CSS animation keeps the page repainting.
+export function startBlink(el) {
+  clearTimeout(el._blinkT);
+  const loop = () => {
+    if (!el.isConnected) return;
+    const f = el.querySelector('.dealer-fig');
+    if (f) { f.classList.add('blink'); setTimeout(() => f.classList.remove('blink'), 140); }
+    el._blinkT = setTimeout(loop, 3500 + Math.random() * 3500);
+  };
+  el._blinkT = setTimeout(loop, 2500 + Math.random() * 2000);
 }
 
 // Fly each new card from the shoe to where it lands, in dealing order (player, dealer, player, dealer…).
-function animateDeal(el) {
+export function animateDeal(el) {
   const felt = el.querySelector('.felt');
   const fresh = [...el.querySelectorAll('.pcard.deal, .pcard.flip')];
   if (!fresh.length) return;
@@ -108,7 +143,7 @@ function animateDeal(el) {
   fresh.filter((c) => c.classList.contains('flip')).forEach((c) => c.style.setProperty('--d', '120ms'));
   felt.style.setProperty('--n', String(Math.max(1, order.length)));
   felt.style.setProperty('--step', `${STEP}ms`);
-  felt.classList.add('dealing');
+  felt.classList.remove('dealing'); void felt.offsetWidth; felt.classList.add('dealing');
   dealSound(order.length);
   clearTimeout(felt._t);
   felt._t = setTimeout(() => felt.classList.remove('dealing'), order.length * STEP + 700);
