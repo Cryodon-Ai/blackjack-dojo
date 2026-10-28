@@ -2,11 +2,13 @@ import { store } from './store.js';
 import { ctx } from './ctx.js';
 import { srs } from './srs.js';
 import { engine } from './engine-client.js';
+import { toast } from '../ui/hand.js';
 
 const screen = () => document.getElementById('screen');
 let cleanup = null, token = 0;
 
 const ROUTES = {
+  lab: () => import('../screens/lab.js'),
   learn: () => import('../screens/learn.js'),
   drill: () => import('../screens/drill.js'),
   play: () => import('../screens/play.js'),
@@ -16,9 +18,9 @@ const ROUTES = {
 };
 
 function parse() {
-  const h = location.hash.replace(/^#\/?/, '') || 'learn';
+  const h = location.hash.replace(/^#\/?/, '') || 'lab';
   const [name, ...rest] = h.split('/');
-  return { name: ROUTES[name] ? name : 'learn', parts: rest };
+  return { name: ROUTES[name] ? name : 'lab', parts: rest };
 }
 
 async function route() {
@@ -27,7 +29,11 @@ async function route() {
   cleanup = null;
   document.getElementById('app').classList.remove('focus');
   const { name, parts } = parse();
-  document.querySelectorAll('#tabs a').forEach((a) => a.classList.toggle('on', a.dataset.tab === (name === 'cert' ? 'learn' : name)));
+  document.querySelectorAll('#tabs a').forEach((a) => {
+    const on = a.dataset.tab === (name === 'cert' || name === 'learn' ? 'lab' : name);
+    a.classList.toggle('on', on);
+    if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
   const el = screen();
   el.scrollTop = 0;
   el.innerHTML = '<div class="dim" style="padding:40px 0;text-align:center">Loading…</div>';
@@ -47,12 +53,17 @@ async function boot() {
   await store.init();
   await ctx.load();
   await srs.load();
+  document.documentElement.classList.toggle('lg', !!ctx.profile.settings.largeText);
   window.addEventListener('hashchange', route);
   await route();
   // Fill the whole chart for the active rules in the background (lowest priority in the worker).
   setTimeout(() => engine.prefill(ctx.rules, () => {}), 1200);
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-    try { await navigator.serviceWorker.register('sw.js'); } catch { /* offline install unavailable */ }
+    try {
+      const had = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) toast('Updated to a new version. Reload to use it.', 6000); });
+      await navigator.serviceWorker.register('sw.js');
+    } catch { /* offline install unavailable */ }
   }
 }
 boot();

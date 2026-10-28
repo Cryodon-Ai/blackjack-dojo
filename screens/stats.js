@@ -213,6 +213,10 @@ async function settings(body, ctx) {
         <option value="coach" ${s.mode === 'coach' ? 'selected' : ''}>Coach — blocks wrong moves and explains</option>
         <option value="rewind" ${s.mode === 'rewind' ? 'selected' : ''}>Practice + Rewind — play freely, then replay mistakes</option>
       </select></label>
+      <label class="field">Daily goal (hands): <b id="dgv">${s.dailyGoal || 30}</b><input type="range" id="dg" min="10" max="150" step="5" value="${s.dailyGoal || 30}"></label>
+      <div class="toggle"><span>Vibrate on answers</span><input type="checkbox" id="hp" ${s.hapticsOn ? 'checked' : ''}></div>
+      <div class="toggle"><span>Sound cues</span><input type="checkbox" id="sn" ${s.soundOn ? 'checked' : ''}></div>
+      <div class="toggle"><span>Larger text</span><input type="checkbox" id="lg" ${s.largeText ? 'checked' : ''}></div>
       <div class="toggle"><span>Show the chart before Tier 6</span><input type="checkbox" id="rv" ${s.reveal ? 'checked' : ''}></div></div>
     <div class="card"><h3>About the numbers</h3><p class="small dim">House edges and EVs are computed by an exact solver that is verified against published tables (see engine/verify.js). Everything else — including whatever a casino's marketing says about side bets — is marked as unverified when I cannot check it.</p></div>`;
   body.querySelector('#rules').onclick = () => openRulesEditor(rules, { onSave: async (r, id) => { await ctx.setRules(r, id); engine.prefill(ctx.rules, () => {}); settings(body, ctx); } });
@@ -221,4 +225,8 @@ async function settings(body, ctx) {
   body.querySelector('#fs').oninput = async (e) => { s.flashSeconds = Number(e.target.value); body.querySelector('#fsv').textContent = s.flashSeconds.toFixed(1) + 's'; await ctx.save(); };
   body.querySelector('#mode').onchange = async (e) => { s.mode = e.target.value; s.coach = s.mode === 'coach'; await ctx.save(); };
   body.querySelector('#rv').onchange = async (e) => { s.reveal = e.target.checked; await ctx.save(); };
+  body.querySelector('#dg').oninput = async (e) => { s.dailyGoal = Number(e.target.value); body.querySelector('#dgv').textContent = s.dailyGoal; await ctx.save(); };
+  body.querySelector('#hp').onchange = async (e) => { s.hapticsOn = e.target.checked; await ctx.save(); };
+  body.querySelector('#sn').onchange = async (e) => { s.soundOn = e.target.checked; await ctx.save(); };
+  body.querySelector('#lg').onchange = async (e) => { s.largeText = e.target.checked; document.documentElement.classList.toggle('lg', s.largeText); await ctx.save(); };
 }

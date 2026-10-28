@@ -65,7 +65,7 @@ export function renderActionBar(el, { legal, reasons = {}, onAct, disabled = fal
   const acts = ACTS.filter(([k]) => show.includes(k));
   el.innerHTML = acts.map(([k, name]) => {
     const off = disabled || !legal[k] || (only && !only.includes(k));
-    return `<button class="act ${k} ${off ? 'off' : ''}" data-a="${k}" aria-disabled="${off}">${name}<small>${k}</small></button>`;
+    return `<button class="act ${k} ${off ? 'off' : ''}" data-a="${k}" aria-label="${name}" aria-disabled="${off}">${name}<small>${k}</small></button>`;
   }).join('');
   el.style.gridTemplateColumns = `repeat(${acts.length}, 1fr)`;
   el.querySelectorAll('.act').forEach((b) => {

@@ -9,6 +9,8 @@ works in airplane mode afterwards.
 ```bash
 cd ~/blackjack-dojo
 node engine/verify.js --quick     # ~1 min; must end with "RESULT: GREEN"
+node tools/lab-test.mjs           # Strategy Lab logic + drill pools vs the solver; must say 0 failed
+node tools/lab-e2e.mjs            # headless phone-width run of the Lab (needs playwright-core + chromium)
 node tools/stamp.js               # REQUIRED: rewrites the service-worker cache version + file list
 ```
 

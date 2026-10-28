@@ -8,6 +8,8 @@ import { makeCard, makeHand } from '../ui/cards.js';
 import { randomRanks } from '../curriculum/cells.js';
 import { srs } from '../app/srs.js';
 import { store } from '../app/store.js';
+import { journal } from '../app/journal.js';
+import { cue } from '../app/feel.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -124,9 +126,11 @@ export function startRunner(root, opts) {
       if (correct) { st.correct++; st.streak++; st.best = Math.max(st.best, st.streak); }
       else { st.streak = 0; st.evLost += evLoss; if (st.strikes !== null) st.strikes--; }
       st.results.push({ rowKey: item.rowKey, up: item.up, correct, ms, evLoss });
-      await srs.record(item.rowKey, item.up, rules, correct, evLoss);
+      await srs.record(item.rowKey, item.up, rules, correct, evLoss, ms);
+      cue(correct);
+      if (!correct) await journal.add({ rowKey: item.rowKey, up: item.up, chosen: chosen || 'timeout', right: res.action });
       if (!correct && o.queue) o.queue.notifyMiss(item);
-      if (o.onAnswer) await o.onAnswer({ item, correct, chosen, ms, evLoss, res, rules }, st);
+      if (o.onAnswer) await o.onAnswer({ item, correct, chosen, ms, evLoss, res, rules, ranks }, st);
       hud();
     }
 
@@ -213,7 +217,7 @@ export function startRunner(root, opts) {
 
   async function finish() {
     if (st.stopped) return;
-    st.stopped = true;
+    st.stopped = true; unkey();
     stopTimer();
     app.classList.remove('focus');
     const acc = st.n ? st.correct / st.n : 0;
@@ -231,7 +235,17 @@ export function startRunner(root, opts) {
     root.querySelector('#again').onclick = () => { if (o.restart) o.restart(); else location.reload(); };
   }
 
-  $('exit').addEventListener('click', () => { st.stopped = true; stopTimer(); app.classList.remove('focus'); });
+  // Keyboard: H S D P R pick an action; Enter or Space continues.
+  const onKey = (e) => {
+    if (st.stopped || e.metaKey || e.ctrlKey || e.altKey || document.querySelector('.scrim')) return;
+    const k = e.key.toUpperCase();
+    const next = root.querySelector('#nx, #fin');
+    if ((e.key === 'Enter' || e.key === ' ') && next) { e.preventDefault(); next.click(); return; }
+    if ('HSDPR'.includes(k) && k.length === 1) { const b = root.querySelector(`.act[data-a="${k}"]`); if (b) b.click(); }
+  };
+  document.addEventListener('keydown', onKey);
+  const unkey = () => document.removeEventListener('keydown', onKey);
+  $('exit').addEventListener('click', () => { unkey(); st.stopped = true; stopTimer(); app.classList.remove('focus'); });
   show();
-  return { stop() { st.stopped = true; stopTimer(); app.classList.remove('focus'); }, state: st, finish };
+  return { stop() { unkey(); st.stopped = true; stopTimer(); app.classList.remove('focus'); }, state: st, finish };
 }

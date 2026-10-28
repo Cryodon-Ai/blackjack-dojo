@@ -7,10 +7,11 @@ import { cellKey, ROW } from '../curriculum/cells.js';
 
 const DAY = 86400000;
 const LADDER = [1, 3, 7, 21];
+export const MASTERED = 3;
 
 const blank = (rowKey, up, rules, key) => ({
   key, rowKey, up, ruleSetKey: key.split('|')[2], attempts: 0, correct: 0, lastSeen: 0,
-  interval: 0, ease: 2.5, level: 0, evLostTotal: 0, due: 0, lastCorrect: null,
+  interval: 0, ease: 2.5, level: 0, evLostTotal: 0, due: 0, lastCorrect: null, streak: 0, msTotal: 0,
 });
 
 export const srs = {
@@ -29,11 +30,12 @@ export const srs = {
   },
 
   // Record one answer. evLoss = fraction of a bet lost by the choice (0 when correct).
-  async record(rowKey, up, rules, correct, evLoss = 0) {
+  async record(rowKey, up, rules, correct, evLoss = 0, ms = 0) {
     const key = cellKey(rowKey, up, rules);
     const c = this.cache.get(key) || blank(rowKey, up, rules, key);
     const now = Date.now();
-    c.attempts++; c.lastSeen = now; c.evLostTotal += evLoss || 0; c.lastCorrect = correct;
+    c.attempts++; c.msTotal = (c.msTotal || 0) + Math.min(ms || 0, 20000); c.lastSeen = now; c.evLostTotal += evLoss || 0; c.lastCorrect = correct;
+    c.streak = correct ? (c.streak || 0) + 1 : 0;     // consecutive correct; 3 = mastered (Strategy Lab)
     if (correct) {
       c.correct++;
       c.level = Math.min(c.level + 1, 12);
@@ -48,6 +50,8 @@ export const srs = {
     await store.putCell(c);
     return c;
   },
+
+  mastered(c) { return !!c && (c.streak || 0) >= MASTERED; },
 
   accuracy(c) { return c && c.attempts ? c.correct / c.attempts : null; },
 

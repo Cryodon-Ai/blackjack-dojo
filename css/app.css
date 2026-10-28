@@ -175,3 +175,15 @@ canvas, svg.chart { width: 100%; display: block; }
 .grid.guide .c { aspect-ratio: auto; min-height: 30px; font-size: 13px; border: 0; position: relative; }
 .grid.guide .c small { font-size: 9px; font-weight: 700; opacity: .75; margin-left: 1px; text-transform: lowercase; }
 .grid.guide .c.chg { outline: 2px solid #fff; outline-offset: -2px; }
+
+/* Larger-text setting */
+html.lg body { zoom: 1.14; }
+/* Print: Rule Lists as a take-along cheat sheet */
+@media print {
+  html, body { overflow: visible !important; height: auto !important; background: #fff !important; color: #000 !important; }
+  #app { position: static !important; max-width: none; border: 0; }
+  #tabs, .topbar, .btn, .row > button, #rulechip, .toast { display: none !important; }
+  #screen { overflow: visible !important; padding: 0 !important; }
+  .card { background: #fff !important; border: 1px solid #999 !important; color: #000 !important; break-inside: avoid; }
+  .dim, .small.dim { color: #333 !important; }
+}

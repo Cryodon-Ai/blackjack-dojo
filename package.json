@@ -1,5 +1,11 @@
 {
   "name": "blackjack-dojo",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "verify": "node engine/verify.js --quick",
+    "test": "node tools/lab-test.mjs",
+    "e2e": "node tools/lab-e2e.mjs",
+    "stamp": "node tools/stamp.js"
+  }
 }
