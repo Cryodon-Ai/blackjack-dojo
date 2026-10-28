@@ -46,7 +46,11 @@ async function route() {
     if (my === token) cleanup = c; else if (typeof c === 'function') c();
   } catch (err) {
     console.error(err);
-    el.innerHTML = `<h1>Something broke</h1><p class="dim">${ctx.esc(err.message || err)}</p><a class="btn block" href="#/learn">Back to Learn</a>`;
+    el.innerHTML = `<h1>Something broke</h1><p class="dim">${ctx.esc(err.message || err)}</p><p class="small dim">This usually means the phone or browser is holding an older copy of the app. Repair clears it and loads the latest version. Your progress is kept.</p><button class="btn primary block" id="repair">Repair and reload</button><div class="gap"></div><a class="btn block" href="#/lab" style="display:block;text-align:center;text-decoration:none">Back to Lab</a>`;
+    el.querySelector('#repair').onclick = async () => {
+      try { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); for (const k of await caches.keys()) await caches.delete(k); } catch { /* ignore */ }
+      location.reload();
+    };
   }
 }
 

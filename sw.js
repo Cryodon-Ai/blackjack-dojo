@@ -1,6 +1,6 @@
 // Service worker: precache the whole app, serve cache-first, work fully offline.
 // The two marked blocks are rewritten by `node tools/stamp.js` (run before every deploy).
-/* STAMP:BUILD */ const BUILD = '125e42d413af';
+/* STAMP:BUILD */ const BUILD = '6b25a6f3bfe8';
 /* STAMP:PRECACHE */ const PRECACHE = ["./","./app/ctx.js","./app/edges.js","./app/engine-client.js","./app/feedback.js","./app/feel.js","./app/journal.js","./app/labcore.js","./app/look.js","./app/main.js","./app/presets.js","./app/roads.js","./app/shoe.js","./app/srs.js","./app/store.js","./app/why.js","./css/app.css","./curriculum/cells.js","./curriculum/claims.js","./curriculum/quizgen.js","./curriculum/tiers.js","./curriculum/tokens.js","./curriculum/traps.js","./data/edges.json","./engine/baccarat.js","./engine/ev.js","./engine/round.js","./engine/rules.js","./engine/sidebets.js","./engine/sim.js","./engine/strategy.js","./engine/worker.js","./games/baccarat.js","./games/blackout.js","./games/count.js","./games/gravity.js","./games/live.js","./games/practice.js","./games/quiz.js","./games/runner.js","./icons/icon-180.png","./icons/icon-192.png","./icons/icon-512.png","./index.html","./manifest.webmanifest","./money/tools.js","./screens/baccarat.js","./screens/cert.js","./screens/drill.js","./screens/guide.js","./screens/lab.js","./screens/learn.js","./screens/play.js","./screens/stats.js","./ui/bacc-table.js","./ui/cardart.js","./ui/cards.js","./ui/dealer.js","./ui/hand.js","./ui/roads-view.js","./ui/rules-editor.js","./ui/sheet.js","./ui/shoe-settings.js","./ui/table.js"];
 const CACHE = 'dojo-' + BUILD;
 
@@ -20,15 +20,23 @@ self.addEventListener('activate', (e) => {
   })());
 });
 
+// Network first, cache as the offline fallback. Cache-first mixed old cached files with new ones fetched
+// for a route that did not exist in the old build (e.g. a new screen importing an export an old file lacks),
+// which showed "Something broke" after a deploy. Online you always get one consistent, current set of files.
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   e.respondWith((async () => {
     const c = await caches.open(CACHE);
-    const hit = await c.match(req, { ignoreSearch: true });
-    if (hit) return hit;
-    try { return await fetch(req); }
-    catch (err) {
+    try {
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);
+      const res = await fetch(req, { cache: 'no-cache', signal: ctl.signal });
+      clearTimeout(t);
+      if (res.ok) c.put(req, res.clone()).catch(() => {});
+      return res;
+    } catch (err) {
+      const hit = await c.match(req, { ignoreSearch: true });
+      if (hit) return hit;
       if (req.mode === 'navigate') { const idx = await c.match('./index.html'); if (idx) return idx; }
       throw err;
     }
