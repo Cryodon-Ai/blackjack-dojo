@@ -4,6 +4,12 @@ import { srs } from './srs.js';
 import { engine } from './engine-client.js';
 import { toast } from '../ui/hand.js';
 
+export function applyLook(s) {
+  const h = document.documentElement;
+  h.classList.toggle('lg', !!s.largeText);
+  h.classList.toggle('nodealer', s.showDealer === false);
+  h.dataset.felt = s.felt || 'green';
+}
 const screen = () => document.getElementById('screen');
 let cleanup = null, token = 0;
 
@@ -53,7 +59,7 @@ async function boot() {
   await store.init();
   await ctx.load();
   await srs.load();
-  document.documentElement.classList.toggle('lg', !!ctx.profile.settings.largeText);
+  applyLook(ctx.profile.settings);
   window.addEventListener('hashchange', route);
   await route();
   // Fill the whole chart for the active rules in the background (lowest priority in the worker).

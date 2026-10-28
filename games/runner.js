@@ -83,7 +83,7 @@ export function startRunner(root, opts) {
     const up = makeCard(item.up);
     const hole = makeCard(Math.random() < 0.5 ? 10 : 2 + Math.floor(Math.random() * 8));
     cur.cards = cards; cur.dealer = [up, hole];
-    renderTable($('tbl'), { dealer: cur.dealer, hideHole: true, hands: [{ cards, active: true }], newFrom: { dealer: 0, hands: [0] } });
+    renderTable($('tbl'), { variant: 'drill', dealer: cur.dealer, hideHole: true, hands: [{ cards, active: true }], newFrom: { dealer: 0, hands: [0] } });
     $('hint').innerHTML = o.hint ? `<div class="banner small">${o.hint(item, cur)}</div>` : '';
     setBar(false);
     hud();
@@ -117,7 +117,7 @@ export function startRunner(root, opts) {
     const ms = Math.round(performance.now() - cur.shownAt);
     const key = chosen ? evKey(chosen) : null;
     const evLoss = correct || timeout ? 0 : Math.max(0, res.ev[evKey(res.action)] - (res.ev[key] ?? res.ev[evKey(res.action)]));
-    renderTable($('tbl'), { dealer: cur.dealer, hideHole: false, hands: [{ cards: cur.cards, active: true }], newFrom: { dealer: 1, hands: [cur.cards.length] } });
+    renderTable($('tbl'), { variant: 'drill', dealer: cur.dealer, hideHole: false, hands: [{ cards: cur.cards, active: true }], newFrom: { dealer: 1, hands: [cur.cards.length] } });
     markActions($('bar'), chosen, res.action);
     $('bar').querySelectorAll('.act').forEach((b) => b.classList.add('off'));
 
@@ -169,7 +169,7 @@ export function startRunner(root, opts) {
     const cards = makeHand(t.hand.player);
     const dealer = [makeCard(t.hand.up), makeCard(10)];
     cur.cards = cards; cur.dealer = dealer;
-    renderTable($('tbl'), { dealer, hideHole: true, hands: [{ cards, active: true }], newFrom: { dealer: 0, hands: [0] } });
+    renderTable($('tbl'), { variant: 'drill', dealer, hideHole: true, hands: [{ cards, active: true }], newFrom: { dealer: 0, hands: [0] } });
     $('hint').innerHTML = `<div class="banner ${t.tempt ? 'due' : ''}">${t.tempt ? `<div class="due" style="font-weight:800;font-size:18px;margin-bottom:4px">${esc(t.tempt)}</div>` : ''}<b>${esc(t.title)}</b><br>${t.html}</div>`;
     $('bar').style.gridTemplateColumns = '1fr 1fr';
     $('bar').innerHTML = `<button class="act" data-a="decline" style="border-color:var(--ok)">Decline</button><button class="act" data-a="accept">Accept</button>`;
@@ -194,7 +194,7 @@ export function startRunner(root, opts) {
     if (o.onAnswer) await o.onAnswer({ item: cur.item, trap: t, correct, chosen: choice, ms, evLoss: cost }, st);
     hud();
     const over = (st.strikes !== null && st.strikes <= 0) || (o.total && st.n >= o.total) || (o.stopWhen && o.stopWhen(st));
-    renderTable($('tbl'), { dealer: cur.dealer, hideHole: false, hands: [{ cards: cur.cards, active: true }], newFrom: { dealer: 1, hands: [cur.cards.length] } });
+    renderTable($('tbl'), { variant: 'drill', dealer: cur.dealer, hideHole: false, hands: [{ cards: cur.cards, active: true }], newFrom: { dealer: 1, hands: [cur.cards.length] } });
     $('verdict').innerHTML = `<div class="verdict ${correct ? 'ok' : 'bad'} pop"><div class="head ${correct ? 'ok' : 'bad'}">${correct ? 'Declined — correct' : timeout ? "Time's up — decline is the answer" : 'Never accept this'}</div>
       <div class="reason">${esc(t.why)}</div>${!correct && cost > 0 ? `<p class="small">Accepting costs about <b class="bad">$${(cost * 100).toFixed(2)}</b> per $100 bet on this offer.</p>` : ''}</div>`;
     if (correct && o.autoAdvanceMs && !over) { setTimeout(() => { if (!st.stopped) show(); }, o.autoAdvanceMs); return; }
@@ -208,7 +208,7 @@ export function startRunner(root, opts) {
   function replayHand() {
     answered = false;
     $('verdict').innerHTML = '';
-    renderTable($('tbl'), { dealer: cur.dealer, hideHole: true, hands: [{ cards: cur.cards, active: true }], newFrom: { dealer: 0, hands: [0] } });
+    renderTable($('tbl'), { variant: 'drill', dealer: cur.dealer, hideHole: true, hands: [{ cards: cur.cards, active: true }], newFrom: { dealer: 0, hands: [0] } });
     $('bar').style.gridTemplateColumns = '';
     renderActionBar($('bar'), { legal: legalFor(cur), reasons: reasonsFor(cur), onAct: (k) => answer(k, { replay: true }) });
     cur.shownAt = performance.now();

@@ -86,15 +86,15 @@ a { color: var(--info); }
 .bar .lbl { font-weight: 700; }
 
 /* ===== hand component ===== */
-.table { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 0 2px; }
-.seat { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 148px; }
-.seat .who { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.seat { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 140px; }
 .cards { display: flex; height: 104px; }
 .cards .pcard { margin-left: -34px; }
 .cards .pcard:first-child { margin-left: 0; }
 .pcard { width: 74px; height: 104px; flex: none; filter: drop-shadow(0 3px 6px rgba(0,0,0,.6)); transform-origin: bottom center; }
-.pcard.deal { animation: deal .32s cubic-bezier(.2,.8,.2,1) both; }
-@keyframes deal { from { transform: translateY(-46px) rotate(-8deg) scale(.92); opacity: 0; } to { transform: none; opacity: 1; } }
+.pcard.deal { animation: fly .46s cubic-bezier(.2,.75,.25,1) both; animation-delay: var(--d, 0ms); }
+@keyframes fly { 0% { transform: translate(var(--sx, 0), var(--sy, -50px)) rotate(var(--sr, -18deg)) scale(.55); opacity: 0; } 12% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+.pcard.flip { animation: flip .5s ease both; animation-delay: var(--d, 0ms); }
+@keyframes flip { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
 .badge { font-weight: 800; font-size: 26px; letter-spacing: -.02em; padding: 2px 12px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--line); min-width: 54px; text-align: center; }
 .badge .soft { color: var(--due); }
 .split-hands { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
@@ -187,3 +187,42 @@ html.lg body { zoom: 1.14; }
   .card { background: #fff !important; border: 1px solid #999 !important; color: #000 !important; break-inside: avoid; }
   .dim, .small.dim { color: #333 !important; }
 }
+
+/* ===== the table: felt, rail, dealer, shoe ===== */
+.felt { --felt1: #1d7a4c; --felt2: #0d4a2c; --trim: #c8a24a; position: relative; margin: 4px -4px 6px; padding: 14px 8px 12px; border-radius: 26px 26px 120px 120px / 26px 26px 70px 70px;
+  background: radial-gradient(120% 90% at 50% 38%, var(--felt1), var(--felt2) 78%); box-shadow: inset 0 0 0 2px rgba(0,0,0,.35), inset 0 10px 28px rgba(0,0,0,.45), 0 8px 22px rgba(0,0,0,.55); overflow: hidden; }
+.felt.practice { --felt1: #1b6f86; --felt2: #0a3a4d; --trim: #7fd4e6; }
+.felt.drill { --felt1: #1a6a46; --felt2: #0b3d27; }
+.felt .rail { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 6px #4a2d1b, inset 0 0 0 7px rgba(255,255,255,.14), inset 0 0 0 9px #2a190f; }
+.felt.practice::after { content: ""; position: absolute; inset: 14px; border-radius: inherit; border: 1.5px dashed var(--trim); opacity: .35; pointer-events: none; }
+.dealer-zone { position: relative; display: grid; grid-template-columns: 84px 1fr 62px; align-items: end; gap: 4px; padding: 0 6px; min-height: 124px; }
+.dealer-side { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+.dealer-fig { width: 84px; height: 92px; display: block; }
+.dealer-fig .vest { fill: #15171d; } .dealer-fig .bow { fill: #d8334a; }
+.felt.practice .dealer-fig .bow { fill: #2fbf9a; }
+.dealer-fig .head { transform-origin: 42px 48px; }
+.dealer-fig .arm { transform-origin: 67px 66px; }
+.dealing .dealer-fig .arm { animation: flick .42s ease-in-out 3; }
+.dealing .dealer-fig .head { animation: nod .6s ease-in-out 2; }
+@keyframes flick { 0%, 100% { transform: rotate(0); } 45% { transform: rotate(-58deg) translateY(-3px); } }
+@keyframes nod { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-4deg) translateY(1px); } }
+.dealer-say { margin-top: 2px; padding: 2px 6px; border-radius: 10px; background: rgba(0,0,0,.5); color: #e8f3ec; text-align: center; max-width: 84px; line-height: 1.15; font-size: 10.5px; }
+.dseat { min-height: 124px; justify-content: flex-end; }
+.shoe-side { display: flex; justify-content: flex-end; align-self: start; }
+.shoe { width: 62px; height: 52px; display: block; filter: drop-shadow(0 3px 4px rgba(0,0,0,.6)); }
+.arc { display: block; width: 100%; height: 30px; margin: 2px 0 0; }
+.arc text { fill: var(--trim); font: 700 10px/1 system-ui, sans-serif; letter-spacing: .1em; opacity: .85; }
+.pseat { min-height: 128px; padding-top: 2px; }
+.bet-spot { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 4px; }
+.bet-spot .circle { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--trim); opacity: .7; display: grid; place-items: center; }
+.bet-amt { font-size: 13px; font-weight: 800; color: #fff; }
+.chips { width: 40px; height: 30px; }
+.chip.c1 { fill: #d8334a; stroke: #fff; stroke-width: 1; } .chip.c2 { fill: #2f6bd8; stroke: #fff; stroke-width: 1; } .chip.c3 { fill: #1a1a1f; stroke: #fff; stroke-width: 1; }
+.felt .badge { background: rgba(0,0,0,.5); border-color: rgba(255,255,255,.2); }
+.felt .who { color: #cfe8d8; }
+.felt .small.dim { color: #cfe8d8; }
+html[data-felt="blue"] .felt:not(.practice) { --felt1: #1f4f9a; --felt2: #0d2a58; --trim: #9bc0ff; }
+html[data-felt="red"] .felt:not(.practice) { --felt1: #a02a3c; --felt2: #561320; --trim: #ffb3c0; }
+html.nodealer .dealer-fig, html.nodealer .shoe { visibility: hidden; }
+@media (max-width: 380px) { .dealer-zone { grid-template-columns: 70px 1fr 50px; } .dealer-fig { width: 70px; height: 77px; } .shoe { width: 50px; height: 42px; } }
+@media (prefers-reduced-motion: reduce) { .dealing .dealer-fig .arm, .dealing .dealer-fig .head { animation: none; } }

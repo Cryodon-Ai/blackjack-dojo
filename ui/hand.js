@@ -15,24 +15,7 @@ function badge(cards) {
   return `<div class="badge">${h.total}</div>`;
 }
 
-// state: { dealer:[cards], hideHole:boolean, hands:[{cards, active, note, done}], newFrom: {dealer:n, hands:[n]} }
-// newFrom marks how many cards already existed, so only new ones animate.
-export function renderTable(el, state) {
-  const dealerCards = state.dealer.map((c, i) => cardSVG(c, { faceDown: state.hideHole && i === 1, cls: (state.newFrom && i >= (state.newFrom.dealer || 0)) ? 'deal' : '' })).join('');
-  const dealerBadge = state.hideHole
-    ? `<div class="badge dim">${state.dealer[0].v === 1 ? 'A' : state.dealer[0].v}</div>`
-    : badge(state.dealer);
-  const multi = state.hands.length > 1;
-  const hands = state.hands.map((h, hi) => {
-    const nf = state.newFrom && state.newFrom.hands ? (state.newFrom.hands[hi] ?? 0) : 0;
-    const cs = h.cards.map((c, i) => cardSVG(c, { cls: (state.newFrom && i >= nf) ? 'deal' : '' })).join('');
-    return `<div class="hand ${h.active ? 'active' : ''}"><div class="cards">${cs}</div>${badge(h.cards)}${h.note ? `<div class="small dim">${esc(h.note)}</div>` : ''}</div>`;
-  }).join('');
-  el.innerHTML = `<div class="table">
-    <div class="seat"><div class="who">Dealer</div><div class="cards">${dealerCards}</div>${dealerBadge}</div>
-    <div class="seat"><div class="who">You</div>${multi ? `<div class="split-hands">${hands}</div>` : hands}</div>
-  </div>`;
-}
+export { renderTable } from './table.js';
 
 // ---- action bar ----------------------------------------------------------------------------
 const ACTS = [['H', 'Hit'], ['S', 'Stand'], ['D', 'Double'], ['P', 'Split'], ['R', 'Surr.']];

@@ -15,6 +15,7 @@ const base = `http://127.0.0.1:${server.address().port}/`;
 const { chromium } = await import((process.env.PW || '/home/kkiddgutridge/trade-atlas/node_modules/playwright-core') + '/index.mjs');
 const browser = await chromium.launch({ executablePath: process.env.CHROME || '/home/kkiddgutridge/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell' });
 const page = await (await browser.newContext({ viewport: { width: 390, height: 800 } })).newPage();
+await page.addInitScript(() => { window.__fly = 0; const sp = CSSStyleDeclaration.prototype.setProperty; CSSStyleDeclaration.prototype.setProperty = function (k, ...r) { if (k === '--sx') window.__fly++; return sp.call(this, k, ...r); }; });
 const errs = []; page.on('pageerror', (e) => errs.push('pageerror: ' + e.message)); page.on('console', (m) => m.type() === 'error' && errs.push('console: ' + m.text()));
 const T = () => page.evaluate(() => document.querySelector('#screen').innerText.replace(/\s+/g, ' '));
 const go = async (h, ms = 1200) => { await page.goto(base + '#/lab' + h); await page.reload(); await page.waitForTimeout(ms); };
@@ -67,6 +68,16 @@ await go('/shortcut', 800); await page.evaluate(() => document.querySelector('#g
 await go('/fade', 7000); t = await T(); ok(/spots faded/.test(t), 'fade chart renders');
 await go('/lists', 7000); t = await T(); ok(/Hard 5/.test(t) && /otherwise|always/.test(t), 'rule lists render'); ok(!/undefined|NaN/.test(t), 'rule lists have no undefined/NaN');
 await go('/worst', 1500); ok(/Fix my worst|Nothing to drill/.test(await T()), 'worst list loads');
+
+// Table scene: felt, dealer, shoe; cards fly in from the shoe; practice room looks different
+await go('/gut', 3000);
+ok(await page.evaluate(() => !!document.querySelector('.felt.drill .dealer-fig') && !!document.querySelector('.felt .shoe')), 'drill table has felt, dealer and shoe');
+await page.goto(base + '#/play/practice'); await page.waitForTimeout(1200);
+await page.evaluate(() => document.querySelector('#go').click()); await page.waitForTimeout(400);
+ok(await page.evaluate(() => !!document.querySelector('.felt.practice') && /PRACTICE TABLE/.test(document.querySelector('.felt .arc').textContent)), 'practice room uses the practice felt');
+await page.waitForTimeout(2500);
+ok(await page.evaluate(() => window.__fly >= 2), 'new cards get a shoe-to-seat flight');
+ok(await page.evaluate(() => /Dealer (shows|has)/.test(document.querySelector('.dealer-say').textContent)), 'dealer announces the hand');
 
 // Preset switch + keyboard
 await go('', 1200);

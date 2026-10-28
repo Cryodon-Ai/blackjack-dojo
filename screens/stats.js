@@ -216,6 +216,9 @@ async function settings(body, ctx) {
       <label class="field">Daily goal (hands): <b id="dgv">${s.dailyGoal || 30}</b><input type="range" id="dg" min="10" max="150" step="5" value="${s.dailyGoal || 30}"></label>
       <div class="toggle"><span>Vibrate on answers</span><input type="checkbox" id="hp" ${s.hapticsOn ? 'checked' : ''}></div>
       <div class="toggle"><span>Sound cues</span><input type="checkbox" id="sn" ${s.soundOn ? 'checked' : ''}></div>
+      <label class="field">Table felt<select id="fl"><option value="green" ${(s.felt || 'green') === 'green' ? 'selected' : ''}>Green</option><option value="blue" ${s.felt === 'blue' ? 'selected' : ''}>Blue</option><option value="red" ${s.felt === 'red' ? 'selected' : ''}>Burgundy</option></select></label>
+      <div class="toggle"><span>Show the dealer and shoe</span><input type="checkbox" id="sd" ${s.showDealer === false ? '' : 'checked'}></div>
+      <div class="toggle"><span>Animate dealing</span><input type="checkbox" id="da" ${s.dealAnim === false ? '' : 'checked'}></div>
       <div class="toggle"><span>Larger text</span><input type="checkbox" id="lg" ${s.largeText ? 'checked' : ''}></div>
       <div class="toggle"><span>Show the chart before Tier 6</span><input type="checkbox" id="rv" ${s.reveal ? 'checked' : ''}></div></div>
     <div class="card"><h3>About the numbers</h3><p class="small dim">House edges and EVs are computed by an exact solver that is verified against published tables (see engine/verify.js). Everything else — including whatever a casino's marketing says about side bets — is marked as unverified when I cannot check it.</p></div>`;
@@ -228,5 +231,9 @@ async function settings(body, ctx) {
   body.querySelector('#dg').oninput = async (e) => { s.dailyGoal = Number(e.target.value); body.querySelector('#dgv').textContent = s.dailyGoal; await ctx.save(); };
   body.querySelector('#hp').onchange = async (e) => { s.hapticsOn = e.target.checked; await ctx.save(); };
   body.querySelector('#sn').onchange = async (e) => { s.soundOn = e.target.checked; await ctx.save(); };
-  body.querySelector('#lg').onchange = async (e) => { s.largeText = e.target.checked; document.documentElement.classList.toggle('lg', s.largeText); await ctx.save(); };
+  const look = () => { const h = document.documentElement; h.classList.toggle('lg', !!s.largeText); h.classList.toggle('nodealer', s.showDealer === false); h.dataset.felt = s.felt || 'green'; };
+  body.querySelector('#lg').onchange = async (e) => { s.largeText = e.target.checked; look(); await ctx.save(); };
+  body.querySelector('#fl').onchange = async (e) => { s.felt = e.target.value; look(); await ctx.save(); };
+  body.querySelector('#sd').onchange = async (e) => { s.showDealer = e.target.checked; look(); await ctx.save(); };
+  body.querySelector('#da').onchange = async (e) => { s.dealAnim = e.target.checked; await ctx.save(); };
 }

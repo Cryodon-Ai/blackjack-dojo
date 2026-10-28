@@ -396,7 +396,7 @@ async function audit(el, ctx) {
     box.innerHTML = `${backBar()}<div class="row small dim" style="justify-content:space-between"><span>Spot the Mistake</span><span class="num">${n + 1}/${TOTAL} · ${right} right</span></div><div id="tbl"></div>
       <div class="banner" style="font-size:18px">A player here says: <b>${ACTION_NAME[proposed]}</b>. Good call?</div><div id="vd"></div>
       <div class="actionbar" id="bar" style="grid-template-columns:1fr 1fr"><button class="act" data-j="ok">Right call</button><button class="act" data-j="no">Wrong call</button></div>`;
-    renderTable(box.querySelector('#tbl'), { dealer: [makeCard(item.up), makeCard(10)], hideHole: true, hands: [{ cards: makeHand(ranks), active: true }] });
+    renderTable(box.querySelector('#tbl'), { variant: 'practice', dealer: [makeCard(item.up), makeCard(10)], hideHole: true, hands: [{ cards: makeHand(ranks), active: true }] });
     box.querySelectorAll('[data-j]').forEach((b) => b.onclick = async () => {
       box.querySelectorAll('[data-j]').forEach((x) => { x.disabled = true; });
       const said = b.dataset.j === 'ok', ok = said === showRight;

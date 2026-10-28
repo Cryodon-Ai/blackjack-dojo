@@ -112,7 +112,7 @@ export function practiceTable(el, ctx) {
 
     const show = (r, { hide, active = -1, newFrom } = {}) => {
       if (!hide) SH.revealHole();
-      renderTable($('tbl'), { dealer: r.dealer, hideHole: hide, newFrom,
+      renderTable($('tbl'), { variant: 'practice', dealer: r.dealer, hideHole: hide, newFrom,
         hands: r.hands.map((h, i) => ({ cards: h.cards, active: i === active, note: h.doubled ? 'doubled' : h.surrendered ? 'surrendered' : h.charlie ? 'Charlie' : '' })) });
     };
 
