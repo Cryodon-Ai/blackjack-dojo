@@ -3,7 +3,7 @@ import { liveTable } from '../games/live.js';
 import { practiceTable } from '../games/practice.js';
 import { countTrainer } from '../games/count.js';
 import { gravityTable } from '../games/gravity.js';
-import { videoPokerTable } from '../games/videopoker.js';
+import { videoPoker } from '../games/videopoker.js';
 import { startRunner } from '../games/runner.js';
 import { startQuiz } from '../games/quiz.js';
 import { variance, martingale, bonus } from '../money/tools.js';
@@ -19,7 +19,7 @@ export default async function play(el, parts, ctx) {
   if (g === 'count') return countTrainer(el, ctx);
   if (g === 'live') return liveTable(el, ctx);
   if (g === 'gravity') return gravityTable(el, ctx);
-  if (g === 'video') return videoPokerTable(el, ctx);
+  if (g === 'video') return videoPoker(el, parts.slice(1), ctx);
   if (g === 'trap') return trap(el, ctx);
   if (g === 'rules') return rulesReader(el, ctx);
   if (g === 'variance') return variance(el, ctx);

@@ -56,5 +56,19 @@ const sample = [card(3, 0), card(3, 1), card(9, 2), card(10, 3), card(14, 0)];
 const { best, evs } = evaluateHolds(sample);
 check(evs[best] >= evs[0] - 1e-12, 'best hold is at least as good as drawing five');
 
+// 5. Pay tables: Bonus Poker splits four of a kind by rank, and the other tables pay plain quads.
+import { TABLES, payOf, freshHandValue } from '../engine/videopoker.js';
+const bp = TABLES.bonus85.coins, j96 = TABLES.job96.coins, j85 = TABLES.job85.coins;
+const quad = (r, k) => [card(r, 0), card(r, 1), card(r, 2), card(r, 3), card(k, 0)];
+check(payOf(quad(14, 9), bp) === 80, 'Bonus Poker: four aces pay 80');
+check(payOf(quad(2, 9), bp) === 40 && payOf(quad(4, 9), bp) === 40, 'Bonus Poker: four 2s to 4s pay 40');
+check(payOf(quad(5, 9), bp) === 25 && payOf(quad(13, 9), bp) === 25, 'Bonus Poker: four 5s to kings pay 25');
+check(payOf(quad(14, 9), j96) === 25, 'Jacks or Better: any four of a kind pays 25');
+check(payOf(quad(9, 14), bp) === 25, 'Bonus Poker: four nines pay 25 (kicker is the ace)');
+check(payOf([card(2, 1), card(5, 1), card(8, 1), card(11, 1), card(13, 1)], j85) === 5, '8/5 flush pays 5');
+check(payOf([card(9, 0), card(9, 1), card(9, 2), card(4, 0), card(4, 1)], j85) === 8, '8/5 full house pays 8');
+check(payOf([card(9, 0), card(9, 1), card(4, 2), card(8, 1), card(3, 0)], j96) === 0, 'a low pair pays nothing');
+check(Math.abs(freshHandValue(j96) - freshHandValue(j96)) === 0 && freshHandValue(j96) > 0.3 && freshHandValue(j96) < 0.6, 'fresh 9/6 deal returns between 0.3 and 0.6 coins');
+
 console.log(failed ? `\nRESULT: ${failed} FAILED` : '\nRESULT: GREEN — all video poker checks passed');
 process.exit(failed ? 1 : 0);
