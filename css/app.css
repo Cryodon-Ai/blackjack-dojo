@@ -309,4 +309,15 @@ body { background: radial-gradient(120% 60% at 50% -10%, #17181f 0%, var(--bg) 6
 .qa-opts.two { grid-template-columns: 1fr 1fr; } .qa-opts.three { grid-template-columns: 1fr 1fr 1fr; }
 .qa-opts button { min-height: 56px; border-radius: 14px; border: 1px solid var(--line); background: linear-gradient(180deg, #23252d, #17181e); color: var(--text); font: 700 18px inherit; font-family: inherit; cursor: pointer; }
 .qa-opts button.right { border-color: var(--ok); background: rgba(70,230,176,.15); } .qa-opts button.wrong { border-color: var(--bad); background: rgba(255,84,112,.15); }
+.vpgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.vpcell { appearance: none; border: 1px solid transparent; background: transparent; padding: 0; border-radius: 10px; color: inherit; font: inherit; cursor: pointer; text-align: center; }
+.vpcell:disabled { cursor: default; }
+.vpcell svg { width: 100%; height: auto; display: block; }
+.vpcell.held { border-color: var(--ok); background: rgba(70,230,176,.12); }
+.vptag { font: 700 11px/1 inherit; font-family: inherit; letter-spacing: .08em; color: var(--dim); min-height: 14px; margin-top: 4px; }
+.vpcell.held .vptag { color: var(--ok); }
+.vpgrid-head, .vprow { display: grid; grid-template-columns: 1fr 64px 64px; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.vpgrid-head { border-bottom-width: 2px; }
+.vprow .num, .vpgrid-head .num { text-align: right; }
+.vprow.hit { color: var(--ok); font-weight: 700; }
 .minihand { display: inline-flex; margin-right: 6px; } .minihand .pcard { width: 38px; height: 53px; margin-left: -14px; } .minihand .pcard:first-child { margin-left: 0; }

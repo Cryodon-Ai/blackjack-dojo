@@ -3,6 +3,7 @@ import { liveTable } from '../games/live.js';
 import { practiceTable } from '../games/practice.js';
 import { countTrainer } from '../games/count.js';
 import { gravityTable } from '../games/gravity.js';
+import { videoPokerTable } from '../games/videopoker.js';
 import { startRunner } from '../games/runner.js';
 import { startQuiz } from '../games/quiz.js';
 import { variance, martingale, bonus } from '../money/tools.js';
@@ -18,6 +19,7 @@ export default async function play(el, parts, ctx) {
   if (g === 'count') return countTrainer(el, ctx);
   if (g === 'live') return liveTable(el, ctx);
   if (g === 'gravity') return gravityTable(el, ctx);
+  if (g === 'video') return videoPokerTable(el, ctx);
   if (g === 'trap') return trap(el, ctx);
   if (g === 'rules') return rulesReader(el, ctx);
   if (g === 'variance') return variance(el, ctx);
@@ -37,6 +39,7 @@ async function hub(el, ctx) {
     <a class="card link" href="#/play/count"><h3>Count Trainer</h3><div class="small dim">Hi-Lo: flash cards, keep the running count, then convert to a true count. Optional — it also makes the shoe feel real.</div></a>
     <a class="card link" href="#/play/live"><h3>Live Table</h3><div class="small dim">Real rounds with a simulated bankroll. Every decision graded; cost of your mistakes in dollars; the stop-rule is enforced.</div></a>
     <a class="card link" href="#/play/gravity"><h3>Gravity Blackjack</h3><div class="small dim">The real ICONIC21 game: all four side bets, real multiplier drops, and Practice + Rewind on the main hand.</div></a>
+    <a class="card link" href="#/play/video"><h3>Video Poker</h3><div class="small dim">Jacks or Better, 9/6 pay table. Hold and draw, and the coach shows the exact cost of every hold you get wrong.</div></a>
     <a class="card link" href="#/play/baccarat"><h3>Baccarat</h3><div class="small dim">Learn the rules and the true cost of every bet, drill the draw rules, practise calling the draws, then sit at a table with a dealer and a scoreboard.</div></a>
     <a class="card link" href="#/play/trap"><h3>Trap Mode</h3><div class="small dim">Insurance, even money, multiplier-drop side bets. The only way to win is to decline every one. Best run: <b>${best.trap || 0}</b></div></a>
     <a class="card link" href="#/play/rules"><h3>Rules Panel Reader</h3><div class="small dim">Two tables, five seconds: which one is better, and what does the wrong choice cost per $100?</div></a>
