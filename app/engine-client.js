@@ -53,6 +53,7 @@ async function call(op, payload) {
   if (op === 'decide') return d.s.decideResult(payload.rules, payload.cards, payload.up);
   if (op === 'dealer') return d.m.dealerTable(payload.rules, payload.up);
   if (op === 'edge') return new d.e.Solver(payload.rules).houseEdge();
+  if (op === 'countsim') return (await import('../engine/countsim.js')).countSimReport(payload.params);
   throw new Error('unknown op');
 }
 
@@ -91,6 +92,8 @@ export const engine = {
     store.cacheSet(`${ENGINE_VERSION}|${k}`, r);
     return r;
   },
+
+  async countSim(params) { return call('countsim', { params }); },
 
   async edgeExact(rules) { return call('edge', { rules: normalizeRules(rules) }); },
 
