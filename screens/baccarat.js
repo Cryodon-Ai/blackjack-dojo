@@ -24,6 +24,7 @@ export default async function baccarat(el, parts, ctx) {
   if (sub === 'table') return baccaratTable(el, ctx, 'table');
   if (sub === 'practice') return baccaratTable(el, ctx, 'practice');
   if (sub === 'truth') return truth(el, ctx);
+  if (sub === 'strategy') return strategy(el, ctx);
   return hub(el, ctx);
 }
 
@@ -49,6 +50,7 @@ function hub(el, ctx) {
     <h2>Practice and play</h2>
     <a class="card link" href="#/play/baccarat/practice"><h3>Practice table</h3><div class="small dim">No money. The dealer deals four cards and you call every draw before it happens, with the rule explained after each answer.</div></a>
     <a class="card link" href="#/play/baccarat/table"><h3>Table</h3><div class="small dim">A dealer, a shoe, a bankroll and a scoreboard. Place bets and watch the rules play out. Your loss limit is enforced.</div></a>
+    <a class="card link ok" href="#/play/baccarat/strategy"><h3>Strategy, money and tips</h3><div class="small dim">Which table to choose, what each side bet really costs, an expected-loss calculator, and a lab that simulates Martingale, Paroli, D’Alembert, 1-3-2-6 and Fibonacci against flat betting.</div></a>
     <a class="card link" href="#/play/baccarat/truth"><h3>Do patterns work?</h3><div class="small dim">Simulate 20,000 hands and test “follow the streak”, “bet against it” and the rest.</div></a>
     <div class="card"><b>Honest reminder.</b> Every baccarat bet has a house edge. The lowest is Banker at about 1.06%. The Tie and the Pairs cost 10–14% and should be avoided. No scoreboard pattern changes that.</div>`;
   const set = (key, fn) => el.querySelectorAll(`#${key} button`).forEach((b) => b.onclick = async () => { fn(b.dataset.v); await ctx.save(); hub(el, ctx); });
@@ -215,3 +217,91 @@ function truth(el, ctx) {
     }, 30);
   };
 }
+
+
+// ---- strategy, money and tips ---------------------------------------------------------------------------
+// Every number comes from engine/baccarat.js (exact enumeration). The systems lab uses the exact outcome
+// probabilities for a Banker bet, so it matches the real game on a fresh shoe.
+const SYSTEMS = {
+  flat: { name: 'Flat bet', note: 'Same bet every hand.', init: () => ({}), bet: (st, u) => u, after: () => {} },
+  martingale: { name: 'Martingale', note: 'Double after every loss; back to one unit after a win.', init: () => ({ m: 1 }), bet: (st, u) => u * st.m, after: (st, won) => { st.m = won ? 1 : st.m * 2; } },
+  paroli: { name: 'Paroli', note: 'Double after a win, up to three wins; then reset. Reset on any loss.', init: () => ({ w: 0 }), bet: (st, u) => u * 2 ** st.w, after: (st, won) => { st.w = won ? (st.w >= 2 ? 0 : st.w + 1) : 0; } },
+  dalembert: { name: "D'Alembert", note: 'Add one unit after a loss, remove one after a win.', init: () => ({ k: 1 }), bet: (st, u) => u * st.k, after: (st, won) => { st.k = won ? Math.max(1, st.k - 1) : st.k + 1; } },
+  s1326: { name: '1-3-2-6', note: 'Win and move 1 → 3 → 2 → 6 units; any loss returns to 1.', init: () => ({ i: 0 }), bet: (st, u) => u * [1, 3, 2, 6][st.i], after: (st, won) => { st.i = won ? (st.i + 1) % 4 : 0; } },
+  fib: { name: 'Fibonacci', note: 'Step along 1,1,2,3,5,8… after a loss, two steps back after a win.', init: () => ({ i: 0 }), bet: (st, u) => u * [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144][Math.min(st.i, 11)], after: (st, won) => { st.i = won ? Math.max(0, st.i - 2) : st.i + 1; } },
+};
+
+function runSystems(sys, { unit, bankroll, hands, max, sessions, pw, pl }) {
+  const S = SYSTEMS[sys], results = []; let wag = 0, busted = 0, hitMax = 0;
+  for (let s = 0; s < sessions; s++) {
+    const st = S.init(); let bank = bankroll, w = 0, hit = false;
+    for (let h = 0; h < hands; h++) {
+      let bet = Math.min(S.bet(st, unit), max); if (S.bet(st, unit) > max) hit = true;
+      if (bet > bank) { bet = bank; if (bet <= 0) break; }
+      const r = Math.random(); w += bet;
+      if (r < pw) { bank += bet * 0.95; S.after(st, true); }
+      else if (r < pw + pl) { bank -= bet; S.after(st, false); }
+      if (bank <= 0.0001) { busted++; break; }
+    }
+    if (hit) hitMax++;
+    wag += w; results.push(bank - bankroll);
+  }
+  results.sort((a, b) => a - b);
+  const mean = results.reduce((a, b) => a + b, 0) / sessions;
+  return { mean, median: results[Math.floor(sessions / 2)], worst: results[0], best: results[sessions - 1], up: results.filter((x) => x > 0).length / sessions, busted: busted / sessions, hitMax: hitMax / sessions, edge: wag ? mean * sessions / wag : 0, wag: wag / sessions };
+}
+
+function strategy(el, ctx) {
+  const cfg = baccCfg(ctx), e = edgesFor(cfg), o = e.odds;
+  const usd = (x) => `${x < 0 ? '−' : ''}$${Math.abs(Math.round(x)).toLocaleString()}`;
+  const super6 = (o.banker - o.banker6two - o.banker6three) + 0.5 * (o.banker6two + o.banker6three) - o.player;
+  const tie9 = 9 * o.tie - (1 - o.tie), tie8 = 8 * o.tie - (1 - o.tie);
+  const sideRows = [['Banker', -e.banker, 'best'], ['Player', -e.player, ''], ['Banker, EZ (no commission)', -edgesEZ(cfg).banker, ''], ['Banker, Super 6 table (no commission, a 6 pays 1:2)', -super6, ''], ['Tie, pays 9:1', -tie9, 'bad'], ['Tie, pays 8:1', -tie8, 'bad'], ['Either Pair, pays 11:1', -e.pair, 'bad'], ['Dragon 7 (Banker wins with three-card 7, pays 40:1)', -e.dragon7, 'bad'], ['Panda 8 (Player wins with three-card 8, pays 25:1)', -e.panda8, 'bad'], ['Lucky 6 (Banker wins with 6: 12:1 two cards, 20:1 three)', -e.lucky6, 'bad']];
+  const state = { sys: 'martingale', unit: 10, bankroll: 500, hands: 100, max: 1000, bet: 20, perHr: 70, hrs: 2, kind: 'banker' };
+  function draw(res) {
+    const edge = { banker: -e.banker, player: -e.player, tie: -tie8 }[state.kind];
+    const wag = state.bet * state.perHr * state.hrs;
+    const sd = state.bet * Math.sqrt(state.perHr * state.hrs) * 0.95;   // ≈ one unit of std dev per hand for even-money bets
+    el.innerHTML = `${back()}<h1>Strategy, money and tips</h1>
+      <p class="dim small" style="margin-top:0">Baccarat has almost no strategy, because you never decide how a hand plays. The skill is entirely in choosing the cheapest bets, the right table, and controlling how much you wager. All numbers here are exact for ${cfg.decks} decks.</p>
+      <div class="card"><h3>The short list</h3><ul class="small" style="margin:0;padding-left:18px">
+        <li><b>Bet Banker</b> (about ${pct(-e.banker)}) or Player (${pct(-e.player)}). Nothing else.</li>
+        <li><b>Never</b> bet Tie or the pair and bonus side bets; they cost 7 to 40 times as much.</li>
+        <li>Prefer the table with a <b>9:1 Tie</b> only if you ever bet Tie; it still costs ${pct(-tie9)}.</li>
+        <li>No-commission (EZ / Super 6) tables sound better and are not: the push or the half-paid 6 takes the commission back. Compare the edges below.</li>
+        <li>Scoreboards, “trends”, “dragons” and chop patterns are drawing pictures of random results. The cards do not remember.</li>
+        <li>No betting system changes the edge. They change how the losses arrive. The lab below shows it.</li>
+        <li>Decide your <b>stop-loss and time limit</b> before you sit. Baccarat is fast: 60–100 hands an hour.</li>
+        <li>Online tables: confirm the commission, the Tie payout and whether it is live (a real shoe) or an RNG game before you play.</li></ul></div>
+      <div class="card"><h3>What every bet costs</h3><table class="evtable">${sideRows.map(([n, c, cls]) => `<tr class="${cls === 'best' ? 'best' : ''}"><td class="${cls === 'bad' ? 'bad' : ''}">${n}</td><td class="num ${cls === 'bad' ? 'bad' : ''}">${pct(c)}</td></tr>`).join('')}</table><div class="small dim" style="margin-top:6px">House edge: the share of every dollar wagered the house keeps on average. Side-bet pay tables vary by casino; these use the common ones shown.</div></div>
+      <div class="card"><h3>Expected-loss calculator</h3>
+        <div class="row" style="gap:8px;flex-wrap:wrap"><label class="field grow">Bet ($)<input id="cb" type="number" inputmode="decimal" value="${state.bet}"></label><label class="field grow">Hands / hour<input id="ch" type="number" inputmode="decimal" value="${state.perHr}"></label><label class="field grow">Hours<input id="chr" type="number" inputmode="decimal" value="${state.hrs}"></label></div>
+        <div class="seg" id="ck" style="margin:6px 0 10px">${[['banker', 'Banker'], ['player', 'Player'], ['tie', 'Tie']].map(([v, t]) => `<button data-v="${v}" class="${state.kind === v ? 'on' : ''}">${t}</button>`).join('')}</div>
+        <div class="small">You wager <b>${usd(wag)}</b>. The house expects to keep <b class="bad">${usd(wag * edge)}</b>. A typical swing is about ±${usd(sd)} around that, so a session can end well up or well down: that is variance, not skill.</div></div>
+      <div class="card"><h3>Betting-systems lab</h3><p class="small dim" style="margin-top:0">Banker bets at the exact win / lose / tie odds: win ${pct(o.banker, 2).replace('%', '')}%, lose ${pct(o.player, 2).replace('%', '')}%, tie ${pct(o.tie, 2).replace('%', '')}% (a tie pushes). 8,000 sessions per run. The table limit caps the bet.</p>
+        <div class="seg" id="sy" style="margin:6px 0 8px;flex-wrap:wrap">${Object.entries(SYSTEMS).map(([k, v]) => `<button data-v="${k}" class="${state.sys === k ? 'on' : ''}">${v.name}</button>`).join('')}</div><div class="small dim">${SYSTEMS[state.sys].note}</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><label class="field grow">Unit ($)<input id="su" type="number" value="${state.unit}"></label><label class="field grow">Bankroll ($)<input id="sb" type="number" value="${state.bankroll}"></label><label class="field grow">Hands<input id="sh" type="number" value="${state.hands}"></label><label class="field grow">Table max ($)<input id="sm" type="number" value="${state.max}"></label></div>
+        <button class="btn primary block" id="run">Simulate 8,000 sessions</button>${res ? resultHTML(res) : ''}</div>
+      <div class="card"><b>Honest reminder.</b> A betting system cannot beat a negative-edge game: it only moves the loss around. Martingale wins a small amount very often and loses the whole bankroll rarely but completely; the average is the same as flat betting, minus the house edge.</div>`;
+    const num = (id) => Math.max(0, Number(el.querySelector('#' + id).value) || 0);
+    const keep = () => { state.bet = num('cb') || 1; state.perHr = num('ch') || 1; state.hrs = num('chr') || 1; state.unit = num('su') || 1; state.bankroll = num('sb') || 1; state.hands = Math.round(num('sh')) || 1; state.max = num('sm') || 1; };
+    el.querySelectorAll('#ck button').forEach((b) => b.onclick = () => { keep(); state.kind = b.dataset.v; draw(res); });
+    el.querySelectorAll('#sy button').forEach((b) => b.onclick = () => { keep(); state.sys = b.dataset.v; draw(null); });
+    ['cb', 'ch', 'chr'].forEach((id) => el.querySelector('#' + id).onchange = () => { keep(); draw(res); });
+    el.querySelector('#run').onclick = () => { keep(); const r = runSystems(state.sys, { ...state, sessions: 8000, pw: o.banker, pl: o.player }); const f = runSystems('flat', { ...state, sessions: 8000, pw: o.banker, pl: o.player }); draw({ ...r, flat: f, name: SYSTEMS[state.sys].name }); };
+    function resultHTML(r) {
+      return `<div style="margin-top:10px"><b>${r.name}: ${state.hands} hands of $${state.unit}, bankroll $${state.bankroll}</b><table class="evtable" style="margin-top:6px"><tr><td></td><td class="num"><b>${r.name}</b></td><td class="num"><b>Flat</b></td></tr>
+        <tr><td>Sessions ending ahead</td><td class="num">${Math.round(r.up * 100)}%</td><td class="num">${Math.round(r.flat.up * 100)}%</td></tr>
+        <tr><td>Average result</td><td class="num ${r.mean >= 0 ? 'ok' : 'bad'}">${usd(r.mean)}</td><td class="num ${r.flat.mean >= 0 ? 'ok' : 'bad'}">${usd(r.flat.mean)}</td></tr>
+        <tr><td>Typical (median) session</td><td class="num">${usd(r.median)}</td><td class="num">${usd(r.flat.median)}</td></tr>
+        <tr><td>Worst / best session</td><td class="num">${usd(r.worst)} / ${usd(r.best)}</td><td class="num">${usd(r.flat.worst)} / ${usd(r.flat.best)}</td></tr>
+        <tr><td>Lost the whole bankroll</td><td class="num ${r.busted > 0.1 ? 'bad' : ''}">${Math.round(r.busted * 100)}%</td><td class="num">${Math.round(r.flat.busted * 100)}%</td></tr>
+        <tr><td>Hit the table limit</td><td class="num">${Math.round(r.hitMax * 100)}%</td><td class="num">—</td></tr>
+        <tr><td>Average amount wagered</td><td class="num">${usd(r.wag)}</td><td class="num">${usd(r.flat.wag)}</td></tr>
+        <tr><td>Result per $ wagered</td><td class="num">${(r.edge * 100).toFixed(2)}%</td><td class="num">${(r.flat.edge * 100).toFixed(2)}%</td></tr></table>
+        <div class="small dim" style="margin-top:6px">Look at the last row: per dollar wagered, every system loses the same ~${(-e.banker * 100).toFixed(2)}%. A system that wins more sessions pays for it in the sessions it loses.</div></div>`;
+    }
+  }
+  draw(null);
+}
+const edgesEZ = (cfg) => edgesFor({ ...cfg, variant: 'ez', commission: 0 });

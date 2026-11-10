@@ -83,11 +83,13 @@ export function settle(bet, kind, round, rules = BACC_DEFAULT, pairs = {}) {
 export function exactOdds(decks = 8) {
   const cnt = Array(10).fill(4 * decks); cnt[0] = 16 * decks;
   let n = 52 * decks;
-  const out = { player: 0, banker: 0, tie: 0, banker3Seven: 0, playerNatural: 0, bankerNatural: 0 };
+  const out = { player: 0, banker: 0, tie: 0, banker3Seven: 0, player3Eight: 0, banker6two: 0, banker6three: 0, playerNatural: 0, bankerNatural: 0 };
   const take = (v) => { cnt[v]--; n--; };
   const put = (v) => { cnt[v]++; n++; };
   const res = (p, b, w, p3 = null, bCards = 2) => {
-    if (p > b) out.player += w; else if (b > p) { out.banker += w; if (bCards === 3 && b === 7) out.banker3Seven += w; } else out.tie += w;
+    if (p > b) { out.player += w; if (p3 !== null && p === 8) out.player3Eight += w; }
+    else if (b > p) { out.banker += w; if (bCards === 3 && b === 7) out.banker3Seven += w; if (b === 6) { if (bCards === 2) out.banker6two += w; else out.banker6three += w; } }
+    else out.tie += w;
   };
   for (let a = 0; a < 10; a++) {
     const wa = cnt[a] / n; take(a);
@@ -105,7 +107,7 @@ export function exactOdds(decks = 8) {
               const p2 = (pT + e) % 10;
               if (bankerDraws(bT, e === 0 ? 10 : e)) {
                 for (let f = 0; f < 10; f++) { const wf = we * cnt[f] / n; res(p2, (bT + f) % 10, wf, e, 3); }
-              } else res(p2, bT, we);
+              } else res(p2, bT, we, e, 2);
               put(e);
             }
           } else if (bankerDraws(bT, null)) {
@@ -136,5 +138,9 @@ export function edges(decks = 8, rulesIn = BACC_DEFAULT) {
     tie: r.tiePays * o.tie - (1 - o.tie),
     pair: r.pairPays * pPair - (1 - pPair),
     pPair,
+    // side bets that pay on how the winning hand was made (pay-tables are the common ones; casinos vary)
+    dragon7: 40 * o.banker3Seven - (1 - o.banker3Seven),          // Banker wins with a three-card 7, pays 40:1
+    panda8: 25 * o.player3Eight - (1 - o.player3Eight),            // Player wins with a three-card 8, pays 25:1
+    lucky6: 12 * o.banker6two + 20 * o.banker6three - (1 - o.banker6two - o.banker6three),   // Banker wins with 6: 12:1 two cards, 20:1 three
   };
 }
