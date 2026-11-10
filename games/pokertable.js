@@ -5,6 +5,8 @@ import { Hand, botAction, coach, grade, STYLES, POS_NAMES } from '../engine/hold
 import { describeHand, evaluate, cardStr, classLabel, potOddsNeeded } from '../engine/poker.js';
 import { pcard, back, ensurePokerCSS } from '../ui/pokercards.js';
 import { toast } from '../ui/hand.js';
+import { store } from '../app/store.js';
+import { rec } from '../app/weak.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const bb1 = (x) => (Math.round(x * 10) / 10).toString().replace(/\.0$/, '');
@@ -125,6 +127,7 @@ export function pokerTable(el, ctx) {
       // grade
       const g = grade(c.rec, choice.type);
       S.dec++; S[g === 'good' ? 'good' : g === 'ok' ? 'ok' : 'leak']++;
+      rec(ctx, 'poker:table', c.preflop ? `${c.label} ${c.pos} (${h.raises ? 'vs raise' : 'open'})` : `${h.street} ${c.rec}`, g !== 'leak');
       if (h.street === 'preflop' && choice.type !== 'fold' && !(h.legal(0).check)) S.vpip++;
       if (g === 'leak') S.leaks.push(`${h.street === 'preflop' ? c.label + ' from ' + c.pos : c.hand + ' on the ' + h.street}: you ${actLabel[choice.type].toLowerCase()}ed, better was ${actLabel[c.rec].toLowerCase()}`);
       const mark = g === 'good' ? '<span class="ok">✓ Good</span>' : g === 'ok' ? '<span class="due">~ Close</span>' : '<span class="bad">✗ Leak</span>';
@@ -159,6 +162,7 @@ export function pokerTable(el, ctx) {
       stopped = true;
       document.getElementById('app').classList.remove('focus');
       const t = (st.table ||= { hands: 0, good: 0, dec: 0 }); t.hands += S.hands; t.good += S.good; t.dec += S.dec; ctx.save();
+      if (S.hands) store.addSession({ date: Date.now(), mode: 'poker-table', handsPlayed: S.hands, accuracy: S.dec ? (S.good + S.ok * 0.5) / S.dec : 1, evLost: 0, bankrollDelta: 0 });
       const pc = S.dec ? Math.round((S.good + S.ok * 0.5) / S.dec * 100) : 0;
       el.innerHTML = `<h1>Session over</h1><div class="card"><table class="evtable"><tr><td>Hands</td><td class="num">${S.hands}</td></tr><tr><td>Result</td><td class="num ${S.bb >= 0 ? 'ok' : 'bad'}">${sgn(S.bb)} bb (${S.hands ? sgn(S.bb / S.hands * 100) : 0} bb/100)</td></tr><tr><td>Decision quality</td><td class="num">${pc}% <span class="dim">(${S.good} good, ${S.ok} close, ${S.leak} leaks)</span></td></tr><tr><td>Hands played (VPIP)</td><td class="num">${S.hands ? Math.round(S.vpip / S.hands * 100) : 0}% <span class="dim">(solid range: 20–28%)</span></td></tr></table></div>
         ${S.leaks.length ? `<div class="card"><b>Leaks to review</b><div class="small dim" style="margin-top:6px">${[...new Set(S.leaks)].slice(0, 10).join('<br>')}</div></div>` : ''}

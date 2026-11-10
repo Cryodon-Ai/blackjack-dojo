@@ -7,6 +7,8 @@ import { playRound, playerDraws, bankerDraws, bankerReason, total, bv, settle, n
 import { longestStreak } from '../app/roads.js';
 import { store } from '../app/store.js';
 import { cue, confetti } from '../app/feel.js';
+import { rec } from '../app/weak.js';
+import { say } from '../app/voice.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pct = (x, d = 2) => `${(x * 100).toFixed(d)}%`;
@@ -161,7 +163,7 @@ function drill(el, ctx, id) {
     el.querySelectorAll('#opts button').forEach((b) => b.onclick = () => {
       const ok = b.dataset.v === String(q.right);
       n++; if (ok) { c++; streak++; best = Math.max(best, streak); } else streak = 0;
-      cue(ok);
+      cue(ok); rec(ctx, 'bacc:' + id, String(q.right), ok); say((ok ? 'Correct. ' : 'Not quite. ') + q.why);
       el.querySelectorAll('#opts button').forEach((x) => { x.disabled = true; if (x.dataset.v === String(q.right)) x.classList.add('right'); else if (x === b) x.classList.add('wrong'); });
       el.querySelector('#fb').innerHTML = `<div class="verdict ${ok ? 'ok' : 'bad'} pop"><div class="head ${ok ? 'ok' : 'bad'}">${ok ? 'Correct' : 'Not quite'}</div><div class="small dim">${esc(q.why)}</div></div><button class="btn primary block" id="nx" style="margin-top:8px">${n >= TOTAL ? 'See results' : 'Next'}</button>`;
       el.querySelector('#nx').onclick = next;

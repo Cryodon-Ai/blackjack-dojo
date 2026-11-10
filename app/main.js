@@ -4,11 +4,13 @@ import { srs } from './srs.js';
 import { engine } from './engine-client.js';
 import { toast } from '../ui/hand.js';
 import { applyLook, feltGrain } from './look.js';
+import { startGuard } from './guard.js';
 
 const screen = () => document.getElementById('screen');
 let cleanup = null, token = 0;
 
 const ROUTES = {
+  coach: () => import('../screens/coach.js'),
   lab: () => import('../screens/lab.js'),
   learn: () => import('../screens/learn.js'),
   drill: () => import('../screens/drill.js'),
@@ -19,9 +21,9 @@ const ROUTES = {
 };
 
 function parse() {
-  const h = location.hash.replace(/^#\/?/, '') || 'lab';
+  const h = location.hash.replace(/^#\/?/, '') || 'coach';
   const [name, ...rest] = h.split('/');
-  return { name: ROUTES[name] ? name : 'lab', parts: rest };
+  return { name: ROUTES[name] ? name : 'coach', parts: rest };
 }
 
 async function route() {
@@ -59,6 +61,8 @@ async function boot() {
   await ctx.load();
   await srs.load();
   applyLook(ctx.profile.settings);
+  document.documentElement.classList.toggle('cb', !!ctx.profile.settings.colorblind);
+  startGuard(ctx);
   feltGrain();
   window.addEventListener('hashchange', route);
   await route();

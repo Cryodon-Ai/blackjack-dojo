@@ -13,6 +13,8 @@ import { cardSVG, makeCard } from '../ui/cards.js';
 import { engine } from '../app/engine-client.js';
 import { describeRules } from '../app/presets.js';
 import { toast } from '../ui/hand.js';
+import { rec } from '../app/weak.js';
+import { say } from '../app/voice.js';
 
 const sgn = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n);
 const rnd = (n) => Math.floor(Math.random() * n);
@@ -129,7 +131,7 @@ function devDrill(el, ctx) {
     const right = a === good;
     n++; if (right) { ok++; streak++; } else streak = 0;
     const s = (dv[q.rule.id] ||= { n: 0, c: 0 }); s.n++; if (right) s.c++;
-    const d = (st.dev ||= { n: 0, c: 0 }); d.n++; if (right) d.c++;
+    const d = (st.dev ||= { n: 0, c: 0 }); d.n++; if (right) d.c++; rec(ctx, 'count:dev', q.rule.label, right); say(right ? 'Correct' : ACT[good]);
     ctx.save();
     el.querySelectorAll('.act').forEach((b) => { b.disabled = true; if (b.dataset.a === good) b.classList.add('was-right'); else if (b.dataset.a === a) b.classList.add('picked-bad'); });
     const why = q.tc >= q.idx ? `At ${sgn(q.tc) || '0'}, at or above the index of <b>${sgn(q.idx) || '0'}</b>: ${ACT[q.rule.play]}.` : `At ${sgn(q.tc) || '0'}, below the index of <b>${sgn(q.idx) || '0'}</b>: ${ACT[q.rule.below]}.`;
@@ -169,7 +171,7 @@ function rampDrill(el, ctx) {
       if (busy) return; busy = true;
       const u = Number(b.dataset.u), right = u === q.units;
       n++; if (right) { ok++; streak++; } else streak = 0;
-      const s = (st.ramp ||= { n: 0, c: 0 }); s.n++; if (right) s.c++; ctx.save();
+      const s = (st.ramp ||= { n: 0, c: 0 }); s.n++; if (right) s.c++; rec(ctx, 'count:ramp', 'TC ' + sgn(q.tc), right); ctx.save();
       el.querySelectorAll('.act').forEach((x) => { x.disabled = true; if (Number(x.dataset.u) === q.units) x.classList.add('was-right'); else if (x === b) x.classList.add('picked-bad'); });
       const edge = edgeAtTC(0.5, q.tc);
       el.querySelector('#fb').innerHTML = `<div class="verdict ${right ? 'ok' : 'bad'}"><div class="head ${right ? 'ok' : 'bad'}">${right ? 'Correct' : `${q.units} unit${q.units > 1 ? 's' : ''}`}</div><div class="small">At a true count of ${sgn(q.tc) || '0'} you hold roughly <b>${edge >= 0 ? '+' : '−'}${Math.abs(edge).toFixed(1)}%</b> against a 0.5% house edge. ${q.units === 1 ? (q.tc >= 2 ? '' : 'No edge: stay at the minimum.') : 'An edge: bet up.'}</div></div>`;

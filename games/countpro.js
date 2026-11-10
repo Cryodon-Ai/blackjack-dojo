@@ -16,6 +16,8 @@ import { explain, ACTION_NAME } from '../app/feedback.js';
 import { describeRules } from '../app/presets.js';
 import { indexPlay, insuranceTaken, RAMPS, rampUnits, idxOf } from '../engine/indices.js';
 import { openRulesEditor } from '../ui/rules-editor.js';
+import { store } from '../app/store.js';
+import { rec } from '../app/weak.js';
 
 const KEYS = { H: 'hit', S: 'stand', D: 'double', P: 'split', R: 'surrender' };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -170,6 +172,7 @@ export function countingTable(el, ctx) {
         if (endNow) return;
         const right = chosen === ix.action;
         S.dec.n++; if (right) S.dec.c++;
+        rec(ctx, 'count:play', ix.rule ? ix.rule.label : handLabel(ranks) + ' v ' + upLabel(up), right);
         if (ix.rule) { S.idx.n++; if (right) S.idx.c++; }
         if (right) {
           $('panel').innerHTML = `<div class="small ok" style="text-align:center">✓ ${ACTION_NAME[chosen]}${ix.rule && ix.deviated ? ` — index play (${ix.rule.label} at ${sgn(ftc) || '0'})` : ''}</div>`;
@@ -225,6 +228,7 @@ export function countingTable(el, ctx) {
       document.getElementById('app').classList.remove('focus');
       const pc = (o) => (o.n ? `${Math.round(o.c / o.n * 100)}% <span class="dim">(${o.c}/${o.n})</span>` : '—');
       const t = (st.table ||= { hands: 0 }); t.hands += S.hands; ctx.save();
+      if (S.hands) store.addSession({ date: Date.now(), mode: 'count-play', handsPlayed: S.hands, accuracy: S.dec.n ? S.dec.c / S.dec.n : 1, evLost: 0, bankrollDelta: 0 });
       const mins = Math.max(1, Math.round((Date.now() - S.t0) / 60000));
       el.innerHTML = `<h1>Session over</h1>
         <div class="card"><table class="evtable"><tr><td>Hands</td><td class="num">${S.hands} (${mins} min)</td></tr><tr><td>Result</td><td class="num ${S.units >= 0 ? 'ok' : 'bad'}">${S.units >= 0 ? '+' : '−'}${Math.abs(S.units).toFixed(1)} units on ${S.wag.toFixed(0)} wagered</td></tr>

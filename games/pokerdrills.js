@@ -5,6 +5,8 @@ import { evaluate, describeHand, categoryName, categoryOf, freshDeck, shuffle, e
 import { pcards, ensurePokerCSS } from '../ui/pokercards.js';
 import { cue, confetti } from '../app/feel.js';
 import { store } from '../app/store.js';
+import { rec } from '../app/weak.js';
+import { say } from '../app/voice.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const rnd = (n) => Math.floor(Math.random() * n);
@@ -84,7 +86,7 @@ export const DRILLS = {
       const label = pick(pool), ok = openAction(label, pos) === 'raise';
       const hole = pick(classCombos(label));
       const lead = ['UTG', 'HJ', 'CO', 'BTN', 'SB'].indexOf(pos);
-      return { html: `<div>You are in the <b>${pos}</b>. Everyone folds to you.</div><div style="margin:8px 0">${pcards(hole)}<b style="margin-left:6px">${label}</b></div><div><b>Raise or fold?</b></div>`, opts: [['raise', 'Raise'], ['fold', 'Fold']], right: ok ? 'raise' : 'fold', why: `${label} ${ok ? 'is inside' : 'is outside'} the standard ${pos} range of about ${pct(rangePct(RFI[pos]))} of hands. ${ok ? '' : RFI[order[Math.min(4, lead + 1)]].has(label) && pos !== 'SB' ? `It becomes a raise one seat later (${next}).` : ''}` };
+      return { key: `${label}|${pos}`, html: `<div>You are in the <b>${pos}</b>. Everyone folds to you.</div><div style="margin:8px 0">${pcards(hole)}<b style="margin-left:6px">${label}</b></div><div><b>Raise or fold?</b></div>`, opts: [['raise', 'Raise'], ['fold', 'Fold']], right: ok ? 'raise' : 'fold', why: `${label} ${ok ? 'is inside' : 'is outside'} the standard ${pos} range of about ${pct(rangePct(RFI[pos]))} of hands. ${ok ? '' : RFI[order[Math.min(4, lead + 1)]].has(label) && pos !== 'SB' ? `It becomes a raise one seat later (${next}).` : ''}` };
     },
   },
   vsraise: {
@@ -94,7 +96,7 @@ export const DRILLS = {
       const label = pick(ALL_CLASSES.filter((l) => facingRaise(l, pos, op) !== 'fold' || Math.random() < 0.25));
       const a = facingRaise(label, pos, op), hole = pick(classCombos(label));
       const nm = { '3bet': '3-bet (re-raise)', call: 'Call', fold: 'Fold' };
-      return { html: `<div>${op} raises to 3bb. You are in the <b>${pos}</b>.</div><div style="margin:8px 0">${pcards(hole)}<b style="margin-left:6px">${label}</b></div><div><b>What do you do?</b></div>`, opts: [['3bet', '3-bet'], ['call', 'Call'], ['fold', 'Fold']], right: a, why: `${label} against a raise from ${op}: <b>${nm[a]}</b>. ${a === '3bet' ? 'A premium hand (or a suited-ace bluff): re-raise.' : a === 'call' ? 'Good enough to call, not strong enough to re-raise.' : 'Too weak to continue against this raise.'}` };
+      return { key: `${label}|${pos} v ${op}`, html: `<div>${op} raises to 3bb. You are in the <b>${pos}</b>.</div><div style="margin:8px 0">${pcards(hole)}<b style="margin-left:6px">${label}</b></div><div><b>What do you do?</b></div>`, opts: [['3bet', '3-bet'], ['call', 'Call'], ['fold', 'Fold']], right: a, why: `${label} against a raise from ${op}: <b>${nm[a]}</b>. ${a === '3bet' ? 'A premium hand (or a suited-ace bluff): re-raise.' : a === 'call' ? 'Good enough to call, not strong enough to re-raise.' : 'Too weak to continue against this raise.'}` };
     },
   },
   equity: {
@@ -147,7 +149,7 @@ export function pokerDrill(el, ctx, id) {
     el.querySelectorAll('#opts button').forEach((b) => b.onclick = () => {
       const ok = b.dataset.v === String(q.right);
       n++; if (ok) { c++; streak++; best = Math.max(best, streak); } else streak = 0;
-      cue(ok);
+      cue(ok); rec(ctx, 'poker:' + id, q.key || String(q.right), ok); say((ok ? 'Correct. ' : 'Not quite. ') + q.why);
       el.querySelectorAll('#opts button').forEach((x) => { x.disabled = true; if (x.dataset.v === String(q.right)) x.classList.add('right'); else if (x === b) x.classList.add('wrong'); });
       el.querySelector('#fb').innerHTML = `<div class="verdict ${ok ? 'ok' : 'bad'} pop"><div class="head ${ok ? 'ok' : 'bad'}">${ok ? 'Correct' : 'Not quite'}</div><div class="small dim">${q.why}</div></div><button class="btn primary block" id="nx" style="margin-top:8px">${n >= TOTAL ? 'See results' : 'Next'}</button>`;
       el.querySelector('#nx').onclick = next;

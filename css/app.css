@@ -353,3 +353,7 @@ body { background: radial-gradient(120% 60% at 50% -10%, #17181f 0%, var(--bg) 6
 .lesson ol, .lesson ul { padding-left: 22px; }
 .lesson li { margin: 4px 0; }
 .minihand { display: inline-flex; margin-right: 6px; } .minihand .pcard { width: 38px; height: 53px; margin-left: -14px; } .minihand .pcard:first-child { margin-left: 0; }
+
+#plan-bar { position: fixed; top: env(safe-area-inset-top, 0); left: 0; right: 0; z-index: 50; text-align: center; font-size: 12px; padding: 3px 8px; background: var(--info); color: #001028; text-decoration: none; font-weight: 700; }
+#plan-bar.over { background: var(--bad); color: #fff; }
+html.cb { --ok: #4aa3ff; --bad: #ffb020; --due: #c9a0ff; }
