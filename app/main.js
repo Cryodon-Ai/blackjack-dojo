@@ -11,6 +11,7 @@ let cleanup = null, token = 0;
 
 const ROUTES = {
   coach: () => import('../screens/coach.js'),
+  ask: () => import('../screens/ask.js'),
   lab: () => import('../screens/lab.js'),
   learn: () => import('../screens/learn.js'),
   drill: () => import('../screens/drill.js'),
@@ -21,7 +22,7 @@ const ROUTES = {
 };
 
 function parse() {
-  const h = location.hash.replace(/^#\/?/, '') || 'coach';
+  const h = location.hash.replace(/^#\/?/, '').split('?')[0] || 'coach';
   const [name, ...rest] = h.split('/');
   return { name: ROUTES[name] ? name : 'coach', parts: rest };
 }
@@ -37,6 +38,7 @@ async function route() {
     a.classList.toggle('on', on);
     if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });
+  const fab = document.getElementById('ask-fab'); if (fab) fab.hidden = name === 'ask';
   const el = screen();
   el.scrollTop = 0;
   el.innerHTML = '<div class="dim" style="padding:40px 0;text-align:center">Loading…</div>';
@@ -64,6 +66,7 @@ async function boot() {
   document.documentElement.classList.toggle('cb', !!ctx.profile.settings.colorblind);
   startGuard(ctx);
   feltGrain();
+  if (!document.getElementById('ask-fab')) { const f = document.createElement('a'); f.id = 'ask-fab'; f.href = '#/ask'; f.setAttribute('aria-label', 'Ask the coach'); f.textContent = 'Ask'; document.body.appendChild(f); }
   window.addEventListener('hashchange', route);
   await route();
   // Fill the whole chart for the active rules in the background (lowest priority in the worker).

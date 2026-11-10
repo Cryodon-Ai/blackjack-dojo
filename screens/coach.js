@@ -90,6 +90,7 @@ async function home(el, ctx) {
   const beltCards = Object.entries(sc).map(([k, v]) => { const b = beltOf(v); return `<div class="card" style="margin:0;padding:10px 12px"><div class="row" style="justify-content:space-between"><b>${GN[k]}</b><span class="small" style="color:${b.col}">● ${b.name} belt</span></div><div style="height:6px;background:var(--surface2);border-radius:3px;margin:6px 0"><div style="height:6px;width:${Math.min(100, v)}%;background:${b.col};border-radius:3px"></div></div><div class="small dim">${Math.round(v)} / 100${b.next ? ` · ${b.next[0] - Math.round(v) > 0 ? b.next[0] - Math.round(v) : 1} points to ${b.next[1]}` : ' · top rank'}</div></div>`; }).join('');
   const gname = (g) => ({ 'count:dev': 'Index play', 'count:ramp': 'Bet sizing', 'count:play': 'Count & Play', 'poker:table': 'Poker table' }[g] || g.replace(':', ' · ').replace('poker', 'Poker').replace('bacc', 'Baccarat'));
   el.innerHTML = `<h1>Coach</h1>
+    <a class="card link row" href="#/ask" style="border-color:var(--info)"><div class="grow"><b class="info">Ask the Coach</b><div class="small dim">Any hand, count, bet or concept. Plain English, worked out with the real solvers, offline.</div></div>›</a>
     ${lock ? `<div class="card" style="border-color:var(--due)"><b class="due">Cooldown until ${new Date(lock).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</b><div class="small dim">You went past your stop-loss. Take the break: practice is fine, real-money play can wait. <a href="#/coach/help">Help and limits</a> · <a href="#" id="clrlock">End cooldown</a></div></div>` : ''}
     ${plan ? `<div class="card"><b>Session in progress</b> · ${plan.game}<div class="small dim">${plan.elapsedMin} of ${plan.minutes} min · stop-loss $${plan.limit}</div>${link('#/coach/session', 'End session and debrief')}</div>` : ''}
     <div class="card row"><div class="grow"><div class="small dim">Today</div><b class="num">${today}</b> <span class="dim">of ${goal} reps</span><div style="height:6px;background:var(--surface2);border-radius:3px;margin-top:6px"><div style="height:6px;width:${Math.min(100, today / goal * 100)}%;background:var(--ok);border-radius:3px"></div></div></div><div style="text-align:right"><div class="small dim">Streak</div><b class="num ${streak ? 'ok' : 'dim'}">${streak}</b> <span class="small dim">day${streak === 1 ? '' : 's'}</span></div></div>
@@ -173,7 +174,7 @@ function results(el, ctx) {
 }
 
 // ---- cost of play ---------------------------------------------------------------------------------------------------------------
-const COSTS = [
+export const COSTS = [
   ['Video poker, 9/6 Jacks or Better, perfect play', 0.46, 600], ['Blackjack, good rules, perfect basic strategy', 0.45, 70], ['Craps, don\'t pass / pass line', 1.4, 100], ['Baccarat, Banker bet', 1.06, 70], ['Baccarat, Player bet', 1.24, 70],
   ['Roulette, single zero', 2.7, 40], ['Casino War (going to war on ties)', 2.88, 70], ['Three Card Poker, Ante/Play', 3.37, 60], ['Blackjack, 6:5 payout, perfect play', 1.9, 70], ['Caribbean Stud', 5.22, 50], ['Roulette, double zero', 5.26, 40],
   ['Three Card Poker, Pair Plus', 7.28, 60], ['Dragon 7 / Panda 8 baccarat side bets', 7.61, 70], ['Baccarat, Tie (8 to 1)', 14.36, 70], ['Slots, typical range', 8, 600], ['Keno', 30, 150],
