@@ -8,6 +8,7 @@
 //   #/play/counting/sim        does it pay? simulation on your table rules
 
 import { countingTable } from '../games/countpro.js';
+import { countSystems } from '../games/countsystems.js';
 import { INDEX_RULES, activeRules, idxOf, tierName, RAMPS, rampUnits, edgeAtTC } from '../engine/indices.js';
 import { cardSVG, makeCard } from '../ui/cards.js';
 import { engine } from '../app/engine-client.js';
@@ -30,6 +31,9 @@ export default async function counting(el, parts, ctx) {
   if (sub === 'dev') return devDrill(el, ctx);
   if (sub === 'ramp') return rampDrill(el, ctx);
   if (sub === 'table') return countingTable(el, ctx);
+  if (sub === 'systems') return countSystems(el, ctx, 'systems');
+  if (sub === 'aces') return countSystems(el, ctx, 'aces');
+  if (sub === 'decks') return countSystems(el, ctx, 'decks');
   if (sub === 'sim') return simScreen(el, ctx);
   return hub(el, ctx);
 }
@@ -45,6 +49,9 @@ function hub(el, ctx) {
     <a class="card link" href="#/play/counting/dev"><h3>Index plays <span class="dim num" style="float:right">${pc(d)}</span></h3><div class="small dim">The Illustrious 18 and Fab 4: given the hand and the true count, what is the play? Learn them in order of value.</div></a>
     <a class="card link" href="#/play/counting/ramp"><h3>Bet sizing <span class="dim num" style="float:right">${pc(r)}</span></h3><div class="small dim">True count in, bet out. The ramp is what actually makes the money; practise it until it is automatic.</div></a>
     <a class="card link" href="#/play/count"><h3>Count trainer</h3><div class="small dim">Card values, speed counting, a full-deck run, true-count conversion.</div></a>
+    <a class="card link" href="#/play/counting/systems"><h3>Other counting systems</h3><div class="small dim">KO, Hi-Opt I, Zen, Omega II and Wong Halves: values, deck runs, and how each trades ease for accuracy.</div></a>
+    <a class="card link" href="#/play/counting/decks"><h3>Deck estimation</h3><div class="small dim">Look at the discard tray and say how many decks are left. A bad estimate wrecks the true count.</div></a>
+    <a class="card link" href="#/play/counting/aces"><h3>Ace side count</h3><div class="small dim">Track aces separately to sharpen your bets and insurance decisions.</div></a>
     <h2>Put it together</h2>
     <a class="card link" href="#/play/counting/table"><h3>Count & Play <span class="dim num" style="float:right">${t && t.hands ? t.hands + ' hands' : ''}</span></h3><div class="small dim">A real shoe with a cut card and other players. Size your bet before each hand, play it with the index plays, and get count checks as you go. Everything is graded.</div></a>
     <a class="card link" href="#/play/counting/sim"><h3>Does it pay?</h3><div class="small dim">Simulate hundreds of thousands of hands on your table rules, with and without a count, and see the edge, the swings and the risk of ruin. The honest answer, in numbers.</div></a>
