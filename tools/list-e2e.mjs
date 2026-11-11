@@ -112,4 +112,16 @@ t = await T(); ok(/Dealer/.test(t) && /\$/.test(t), 'tcp table plays hands');
 const bankTxt = await page.evaluate(() => document.querySelector('#screen').innerText);
 await go('#/play/threecard/cost', 900); t = await T(); ok(/7\.28%/.test(t) && /2\.32%/.test(t) && /3\.37%/.test(t), 'tcp cost shows exact edges');
 
+// 7. coach memory
+await go('#/ask', 900);
+await page.evaluate(() => { const i = document.querySelector('#q'); i.value = 'zorblax wibble frobnicate'; document.querySelector('#send').click(); });
+await page.waitForTimeout(900);
+t = await T(); ok(/Saved for the next study session/.test(t), 'unanswered question is saved');
+await go('#/study', 900); t = await T(); ok(/zorblax wibble frobnicate/.test(t) && /Questions waiting \(1\)/i.test(t), 'question waits in the queue');
+await page.evaluate(() => { document.querySelector('#imp').value = JSON.stringify({ entries: [{ title: 'Zorblax wibble', tags: 'zorblax wibble frobnicate', standard: 'A made-up topic for the test.', status: 'verified' }] }); document.querySelector('#imp-go').click(); });
+await page.waitForTimeout(400); t = await T(); ok(/Learned 1/.test(t) && /Questions waiting \(0\)/i.test(t) && /Zorblax wibble/.test(t), 'import teaches the coach and clears the question');
+await go('#/ask', 900);
+await page.evaluate(() => { const i = document.querySelector('#q'); i.value = 'tell me about zorblax wibble'; document.querySelector('#send').click(); });
+await page.waitForTimeout(900); t = await T(); ok(/made-up topic for the test/.test(t), 'the coach answers it offline afterwards');
+
 await done();

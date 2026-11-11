@@ -12,6 +12,7 @@ let cleanup = null, token = 0;
 const ROUTES = {
   coach: () => import('../screens/coach.js'),
   ask: () => import('../screens/ask.js'),
+  study: () => import('../screens/study.js'),
   lab: () => import('../screens/lab.js'),
   learn: () => import('../screens/learn.js'),
   drill: () => import('../screens/drill.js'),
@@ -65,6 +66,7 @@ async function boot() {
   applyLook(ctx.profile.settings);
   document.documentElement.classList.toggle('cb', !!ctx.profile.settings.colorblind);
   await ctx.syncSolved();
+  import('./brain/memory.js').then((m) => m.loadKnowledge(ctx)).catch(() => {});
   startGuard(ctx);
   feltGrain();
   if (!document.getElementById('ask-fab')) { const f = document.createElement('a'); f.id = 'ask-fab'; f.href = '#/ask'; f.setAttribute('aria-label', 'Ask the coach'); f.textContent = 'Ask'; document.body.appendChild(f); }

@@ -362,4 +362,15 @@ export const STARTERS = [
   'What should I work on?',
   'Does card counting work online?',
 ];
+// Knowledge added after startup (shipped study results, things the coach learned): searchable like built-in entries.
+export function addKnowledge(list) {
+  let added = 0;
+  for (const e of list) {
+    if (!e || !e.id || !e.title || KB.some((k) => k.id === e.id)) continue;
+    KB.push({ id: e.id, title: e.title, tags: e.tags || e.title, simple: e.simple || e.standard, standard: e.standard, deep: e.deep || e.standard, links: e.links || [], learned: e.status || true });
+    added++;
+  }
+  if (added) CORPUS = null;
+  return added;
+}
 export { KB };

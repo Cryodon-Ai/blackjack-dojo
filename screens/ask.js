@@ -3,6 +3,7 @@
 
 import { answer, mem, STARTERS, search } from '../app/brain/brain.js';
 import { say, voiceOn, stopSpeaking } from '../app/voice.js';
+import { logQuestion } from '../app/brain/memory.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const LEVELS = [['simple', 'Plain'], ['standard', 'Standard'], ['deep', 'Deep']];
@@ -13,7 +14,7 @@ export default async function ask(el, parts, ctx) {
   let level = s.askLevel || 'standard', busy = false;
   const q = new URLSearchParams((location.hash.split('?')[1] || '')).get('q');
 
-  el.innerHTML = `<div class="topbar"><a class="back" href="#/coach">‹ Coach</a><div class="grow"></div><button class="btn small ghost" id="clr">Clear</button></div>
+  el.innerHTML = `<div class="topbar"><a class="back" href="#/coach">‹ Coach</a><div class="grow"></div><a class="btn small ghost" href="#/study" style="text-decoration:none">Study</a><button class="btn small ghost" id="clr">Clear</button></div>
     <h1 style="margin-bottom:4px">Ask the Coach</h1>
     <div class="small dim" style="margin-bottom:8px">Ask about any hand, count, bet, poker spot or concept. I work the numbers out with the app's solvers, and I work offline.</div>
     <div class="seg" id="lv" style="margin:0 0 8px">${LEVELS.map(([v, t]) => `<button data-v="${v}" class="${level === v ? 'on' : ''}">${t}</button>`).join('')}</div>
@@ -58,7 +59,8 @@ export default async function ask(el, parts, ctx) {
       if (a) pushA(a);
       else {
         const near = search(text, 3).map((h) => h.d.title);
-        pushA({ title: "I'm not sure", simple: "I did not catch that one.", standard: `I could not work that out. I understand questions about specific hands (“16 vs 10”, “soft 18 against a 9”, “AKs vs QQ”), counts (“true count +3, what do I bet?”), poker spots (“open J9s from UTG?”), pot odds and outs, baccarat draws, and general ideas (“why is Banker the best bet?”). Try rephrasing${near.length ? ', or one of these topics: ' + near.map(esc).join(', ') : ''}.`, deep: null, chips: STARTERS.slice(0, 4) });
+        logQuestion(ctx, text); ctx.save();
+        pushA({ title: "I'm not sure", simple: "I did not catch that one.", standard: `I could not work that out. I understand questions about specific hands (“16 vs 10”, “soft 18 against a 9”, “AKs vs QQ”), counts (“true count +3, what do I bet?”), poker spots (“open J9s from UTG?”), pot odds and outs, baccarat draws, and general ideas (“why is Banker the best bet?”). Try rephrasing${near.length ? ', or one of these topics: ' + near.map(esc).join(', ') : ''}.`, deep: null, links: [{ href: '#/study', text: 'Saved for the next study session' }], chips: STARTERS.slice(0, 4) });
       }
     } catch (e) { console.error(e); HISTORY.pop(); pushA({ title: 'Something went wrong', simple: esc(e.message || e), standard: esc(e.message || e) }); }
     busy = false;
