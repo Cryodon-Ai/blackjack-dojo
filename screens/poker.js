@@ -11,6 +11,7 @@
 import { LESSONS, GLOSSARY, TIPS } from '../curriculum/poker.js';
 import { DRILLS, pokerDrill } from '../games/pokerdrills.js';
 import { pokerTable } from '../games/pokertable.js';
+import lab from './pokerlab.js';
 import { pcards, pstr, handGrid, ensurePokerCSS, pcard } from '../ui/pokercards.js';
 import { RFI, VS_RAISE, rangePct, rangeCombos, chen, strengthOrder, equity, outs, evaluate, describeHand, categoryOf, potOddsNeeded, RANKS, SUIT_CH, mk, topRange, cardStr, rankOf, suitOf, freshDeck } from '../engine/poker.js';
 
@@ -26,6 +27,7 @@ export default async function poker(el, parts, ctx) {
   if (sub === 'ranges') return ranges(el, ctx);
   if (sub === 'drills') return arg && DRILLS[arg] ? pokerDrill(el, ctx, arg) : drillsIndex(el, ctx);
   if (sub === 'table') return pokerTable(el, ctx);
+  if (sub === 'lab') return lab(el, parts.slice(1), ctx);
   if (sub === 'calc') return calc(el, ctx);
   if (sub === 'tools') return tools(el, ctx);
   if (sub === 'tips') return tips(el);
@@ -41,6 +43,7 @@ function hub(el, ctx) {
     <a class="card link" href="#/play/poker/table"><h3>Practice table <span class="dim num" style="float:right">${t && t.hands ? t.hands + ' hands' : ''}</span></h3><div class="small dim">Six-handed against bots with different styles. Every decision is graded from equity, pot odds and position, with the reason.</div></a>
     <a class="card link" href="#/play/poker/ranges"><h3>Starting-hand charts</h3><div class="small dim">The raise-or-fold ranges for every seat, plus how to respond to a raise. Tap any hand.</div></a>
     <a class="card link" href="#/play/poker/drills"><h3>Drills</h3><div class="small dim">Hand ranking, outs, pot odds, preflop decisions, equity, positions.</div></a>
+    <a class="card link" href="#/play/poker/lab"><h3>Poker lab</h3><div class="small dim">Postflop spots, board textures, blockers, MDF, heads-up push/fold charts, an ICM calculator, opponent stats, hand review with equity, and a tilt trainer.</div></a>
     <a class="card link" href="#/play/poker/calc"><h3>Equity calculator</h3><div class="small dim">Pick your cards and the board: your chance to win against a random hand, a range, or one known hand.</div></a>
     <a class="card link" href="#/play/poker/tools"><h3>Rake and variance</h3><div class="small dim">What the rake really costs you, and how large the swings are for a winning player.</div></a>
     <a class="card link" href="#/play/poker/tips"><h3>Tips and glossary</h3><div class="small dim">The cheat sheet: sixteen rules that win money, and the terms you will hear.</div></a>

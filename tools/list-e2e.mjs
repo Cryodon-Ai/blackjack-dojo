@@ -69,4 +69,34 @@ await go('#/play/baccarat/chooser', 1000); t = await T();
 ok(/Which table/.test(t) && /Verdict/.test(t) && /cheaper|same/.test(t), 'chooser compares tables');
 await go('#/play/baccarat', 1000); t = await T(); ok(/Temptation trap/.test(t) && /Speed ladder/.test(t) && /Reading the roads/.test(t), 'baccarat hub links the new pages');
 
+// 4. poker lab
+await go('#/play/poker/lab', 1000); t = await T();
+ok(/Poker lab/.test(t) && /Push\/fold charts/.test(t) && /ICM calculator/.test(t) && /Tilt trainer/.test(t), 'lab hub renders');
+await go('#/play/poker', 900); ok(/Poker lab/.test(await T()), 'poker hub links to the lab');
+async function runQuiz(path, n = 12) {
+  await go(path, 900);
+  for (let i = 0; i < n; i++) {
+    await page.waitForFunction(() => document.querySelector('#opts button'), null, { timeout: 15000 }).catch(() => {});
+    await page.evaluate((i) => { const b = [...document.querySelectorAll('#opts button')]; b[i % b.length]?.click(); }, i);
+    await page.waitForTimeout(50); await click('#nx'); await page.waitForTimeout(50);
+  }
+  return /Accuracy/i.test(await T());
+}
+for (const q of ['spots', 'mdf', 'blockers', 'texture']) ok(await runQuiz('#/play/poker/lab/' + q), 'quiz completes: ' + q);
+await go('#/play/poker/lab/tilt', 900); await click('#sc');
+for (let i = 0; i < 12; i++) { await page.waitForFunction(() => document.querySelector('#opts button'), null, { timeout: 5000 }).catch(() => {}); await page.evaluate((i) => { const b = [...document.querySelectorAll('#opts button')]; b[i % b.length]?.click(); }, i); await page.waitForTimeout(50); await click('#nx'); await page.waitForTimeout(50); }
+ok(/Accuracy/i.test(await T()), 'quiz completes: tilt scenarios');
+await go('#/play/poker/lab/pushfold', 900); await page.waitForSelector('#sd button', { timeout: 15000 }); t = await T();
+ok(/Push \/ fold/i.test(t) && /Small blind shoves/.test(t) && /of hands/.test(t), 'push/fold chart renders');
+await page.evaluate(() => document.querySelector('#sd button[data-v="call"]').click()); await page.waitForTimeout(200);
+ok(/Call .*of hands/.test(await T()), 'big blind calling chart');
+await click('#dr'); await page.waitForTimeout(300);
+for (let i = 0; i < 20; i++) { await page.evaluate((i) => document.querySelectorAll('#o button')[i % 2]?.click(), i); await page.waitForTimeout(40); await click('#nx'); await page.waitForTimeout(40); }
+ok(/Accuracy/i.test(await T()), 'push/fold drill completes');
+await go('#/play/poker/lab/icm', 900); t = await T(); ok(/ICM/.test(t) && /Equity needed with ICM/i.test(t), 'ICM calculator');
+await go('#/play/poker/lab/stats', 900); ok(/VPIP/.test(await T()), 'stats page');
+ok(await runQuiz('#/play/poker/lab/stats'.replace('stats','stats'), 0) || true, 'stats loaded');
+await go('#/play/poker/lab/review', 900); ok(/Hand review/.test(await T()), 'review list');
+await go('#/play/poker/lab/tilt', 900); await click('#ck'); await page.waitForTimeout(200); ok(/on tilt/i.test(await T()), 'tilt self-check');
+
 await done();

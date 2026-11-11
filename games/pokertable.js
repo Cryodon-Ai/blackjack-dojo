@@ -1,5 +1,5 @@
 // Poker practice table: 6-max no-limit cash game against bots with different styles, with a coach.
-// Stacks are 100 big blinds and reset every hand. Results are in big blinds (bb). No money involved.
+// Formats: 6-max, 3-handed, heads-up; stacks of 20 to 200 big blinds, reset every hand. Results are in big blinds (bb). No money involved.
 
 import { Hand, botAction, coach, grade, STYLES, POS_NAMES } from '../engine/holdem.js';
 import { describeHand, evaluate, cardStr, classLabel, potOddsNeeded } from '../engine/poker.js';
@@ -23,18 +23,23 @@ export function pokerTable(el, ctx) {
   ensurePokerCSS();
   const st = (ctx.profile.poker ||= {});
   const cfg = (st.tableCfg ||= { table: 'mixed', advice: 'after', types: true });
+  if (!cfg.format) Object.assign(cfg, { format: '6', stack: 100, hud: false });
   let stopped = false, endNow = false;
 
   function setup() {
     const seg = (id, items, cur) => `<div class="seg" id="${id}" style="margin:6px 0 10px">${items.map(([v, t]) => `<button data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}">${t}</button>`).join('')}</div>`;
     el.innerHTML = `<div class="topbar"><a class="back" href="#/play/poker">‹ Poker</a></div><h1>Practice table</h1>
-      <p class="dim small" style="margin-top:0">Six-handed Texas Hold'em, 100 big blinds each, stacks reset every hand. You rotate through every seat so you learn every position. A coach grades each decision with equity, pot odds and position.</p>
+      <p class="dim small" style="margin-top:0">Texas Hold'em against bots, stacks reset every hand. You rotate through every seat so you learn every position. A coach grades each decision with equity, pot odds and position.</p>
       <div class="small dim">The table</div>${seg('t', Object.entries(TABLES).map(([k, v]) => [k, v.name]), cfg.table)}<div class="small dim" style="margin:-4px 0 10px">${TABLES[cfg.table].sub}</div>
+      <div class="small dim">Format</div>${seg('f', [['6', '6-max'], ['3', '3-handed'], ['2', 'Heads-up']], cfg.format)}
+      <div class="small dim">Stack depth (big blinds)</div>${seg('k', [[20, '20'], [40, '40'], [100, '100'], [200, '200']], cfg.stack)}
+      ${cfg.stack < 40 || cfg.format !== '6' ? '<p class="small dim" style="margin-top:-4px">The coach grades with 100-big-blind six-max ranges as its base. Short stacks and short-handed play are looser: use the <a href="#/play/poker/lab/pushfold">push/fold charts</a> under 20 big blinds.</p>' : ''}
       <div class="small dim">Coach</div>${seg('a', [['after', 'Feedback after each action'], ['before', 'Show advice first']], cfg.advice)}
+      <div class="small dim">HUD stats (VPIP / PFR, after 6 hands)</div>${seg('h', [[1, 'On'], [0, 'Off']], cfg.hud ? 1 : 0)}
       <div class="small dim">Player types</div>${seg('p', [[1, 'Shown'], [0, 'Hidden (read them)']], cfg.types ? 1 : 0)}
       <button class="btn primary block" id="go">Deal</button>`;
     const bind = (id, fn) => el.querySelectorAll(`#${id} button`).forEach((b) => b.onclick = () => { fn(b.dataset.v); ctx.save(); setup(); });
-    bind('t', (v) => { cfg.table = v; }); bind('a', (v) => { cfg.advice = v; }); bind('p', (v) => { cfg.types = v === '1'; });
+    bind('t', (v) => { cfg.table = v; }); bind('f', (v) => { cfg.format = v; }); bind('k', (v) => { cfg.stack = Number(v); }); bind('h', (v) => { cfg.hud = v === '1'; }); bind('a', (v) => { cfg.advice = v; }); bind('p', (v) => { cfg.types = v === '1'; });
     el.querySelector('#go').onclick = play;
   }
 
@@ -43,7 +48,10 @@ export function pokerTable(el, ctx) {
     const names = ['You', ...[...FIRST].sort(() => Math.random() - 0.5).slice(0, 5)];
     const styles = ['tag', ...TABLES[cfg.table].mix.slice().sort(() => Math.random() - 0.5)];
     const S = { hands: 0, bb: 0, dec: 0, good: 0, ok: 0, leak: 0, vpip: 0, leaks: [], t0: Date.now() };
-    let button = Math.floor(Math.random() * 6), h = null;
+    const others = [1, 2, 3, 4, 5].sort(() => Math.random() - 0.5);
+    const active = cfg.format === '6' ? [0, 1, 2, 3, 4, 5] : [0, ...others.slice(0, cfg.format === '3' ? 2 : 1)].sort((a, b) => a - b);
+    S.opp = {};
+    let button = active[Math.floor(Math.random() * active.length)], h = null;
     el.innerHTML = `<div class="topbar"><button class="btn small ghost" id="end">End session</button><div class="grow"></div><div class="right small dim" id="hd1"></div></div>
       <div id="hud" class="small"></div><div class="pk-felt" id="felt"></div><div id="hero" class="pk-hero" style="text-align:center"></div><div id="panel"></div><div class="actionbar" id="bar"></div>`;
     const $ = (id) => el.querySelector('#' + id);
@@ -58,11 +66,13 @@ export function pokerTable(el, ctx) {
     function draw(reveal = false, active = -1) {
       const seatHTML = [];
       for (let k = 0; k < 6; k++) {
+        if (!h.active.includes(k)) continue;
         const s = k; const [x, y] = POS[k];
         const isHero = s === 0, folded = h.folded[s];
         const showCards = (reveal && h.showdown && !folded) || isHero;
         const cards = folded ? '' : showCards ? h.hole[s].map((c) => pcard(c)).join('') : back() + back();
-        const tag = cfg.types && !isHero ? `<span class="dim" style="font-size:9px">${STYLES[h.styles[s]].label}</span>` : '';
+        const o = S.opp[s], hudTxt = cfg.hud && o && o.h >= 6 ? `V${Math.round(o.v / o.h * 100)} P${Math.round(o.p / o.h * 100)}` : '';
+        const tag = !isHero && (cfg.types || hudTxt) ? `<span class="dim" style="font-size:9px">${[cfg.types ? STYLES[h.styles[s]].label : '', hudTxt].filter(Boolean).join(' · ')}</span>` : '';
         if (isHero) continue;
         seatHTML.push(`<div class="pk-seat ${folded ? 'out' : ''} ${active === s ? 'turn' : ''}" style="left:${x}%;top:${y}%">${h.button === s ? '<div class="bt">D</div>' : ''}<div class="cards">${cards}</div><div class="nm"><b>${names[s]}</b>${h.posOf(s)} · ${bb1(h.stack[s])}${tag ? '<br>' + tag : ''}</div>${h.bet[s] > 0 ? `<div class="betchip">${bb1(h.bet[s])}</div>` : ''}${h.done && h.showdown && !folded ? `<div class="small" style="color:#fff">${describeHand(h.scores[s])}</div>` : ''}</div>`);
       }
@@ -136,7 +146,7 @@ export function pokerTable(el, ctx) {
     }
 
     async function oneHand() {
-      h = new Hand({ names, styles, button, rand: Math.random });
+      h = new Hand({ names, styles, button, rand: Math.random, stack: cfg.stack, active });
       S.hands++; hud();
       $('panel').innerHTML = '';
       while (!h.done && !endNow) {
@@ -155,7 +165,26 @@ export function pokerTable(el, ctx) {
       const how = h.showdown ? `${w} win${h.winners.length > 1 && !h.winners.includes(0) ? '' : h.winners.length > 1 ? '' : 's'} with ${describeHand(h.scores[h.winners[0]])}` : `${w} wins; everyone else folded`;
       $('panel').insertAdjacentHTML('beforeend', `<div class="verdict ${win > 0 ? 'ok' : win < 0 ? 'bad' : ''}" style="margin-top:6px"><div class="head ${win > 0 ? 'ok' : win < 0 ? 'bad' : ''}">${win > 0 ? 'You win ' : win < 0 ? 'You lose ' : 'Break even '}${win ? bb1(Math.abs(win)) + ' bb' : ''}</div><div class="small">${how}.</div></div>`);
       await new Promise((res) => { $('bar').style.gridTemplateColumns = '1fr'; $('bar').innerHTML = '<button class="btn primary" id="nx">Next hand</button>'; $('bar').querySelector('#nx').onclick = res; });
-      button = (button + 1) % 6;
+      recordHand();
+      do { button = (button + 1) % 6; } while (!active.includes(button));
+    }
+
+    // Opponent stats (VPIP / PFR / postflop aggression) and the hand history for review.
+    function recordHand() {
+      const life = ((st.oppStats ||= {}));
+      for (const s of active) {
+        if (s === 0) continue;
+        const o = (S.opp[s] ||= { h: 0, v: 0, p: 0, a: 0, k: 0 }), L = (life[h.styles[s]] ||= { h: 0, v: 0, p: 0, a: 0, k: 0 });
+        const mine = h.log.filter((r) => r.seat === s);
+        const pre = mine.filter((r) => r.street === 'preflop'), post = mine.filter((r) => r.street !== 'preflop');
+        const v = pre.some((r) => r.type === 'call' || r.type === 'raise') ? 1 : 0, p = pre.some((r) => r.type === 'raise') ? 1 : 0;
+        const a = post.filter((r) => r.type === 'raise').length, k = post.filter((r) => r.type === 'call').length;
+        for (const t of [o, L]) { t.h++; t.v += v; t.p += p; t.a += a; t.k += k; }
+      }
+      const hist = (st.history ||= []);
+      hist.unshift({ t: Date.now(), fmt: cfg.format, stack: cfg.stack, button: h.button, pos: h.posOf(0), hole: h.hole, board: h.board, log: h.log, net: h.net, names, styles, active, showdown: !!h.showdown });
+      if (hist.length > 60) hist.length = 60;
+      ctx.save();
     }
 
     function finish() {

@@ -16,22 +16,24 @@ const SHIFT = ['UTG', 'HJ', 'CO', 'BTN', 'SB'];
 const shiftPos = (pos, by) => { if (pos === 'BB') return 'SB'; const i = SHIFT.indexOf(pos); return SHIFT[Math.max(0, Math.min(SHIFT.length - 1, i + by))]; };
 
 export class Hand {
-  constructor({ names, styles, button, bb = 1, stack = 100, rand = Math.random, hero = 0 }) {
-    this.n = 6; this.names = names; this.styles = styles; this.button = button; this.bb = bb; this.rand = rand; this.hero = hero;
+  constructor({ names, styles, button, bb = 1, stack = 100, rand = Math.random, hero = 0, active = [0, 1, 2, 3, 4, 5] }) {
+    this.n = 6; this.active = active;
+    this.order = [0, 1, 2, 3, 4, 5].map((k) => (button + k) % 6).filter((x) => active.includes(x));   // active seats, button first
+    this.m = this.order.length; this.names = names; this.styles = styles; this.button = button; this.bb = bb; this.rand = rand; this.hero = hero;
     this.deck = shuffle(freshDeck(), rand);
     this.hole = Array.from({ length: 6 }, () => [this.deck.pop(), this.deck.pop()]);
     this.board = []; this.street = 'preflop';
     this.stack = Array(6).fill(stack); this.bet = Array(6).fill(0); this.total = Array(6).fill(0);
-    this.folded = Array(6).fill(false); this.allin = Array(6).fill(false); this.acted = Array(6).fill(false);
+    this.folded = [0, 1, 2, 3, 4, 5].map((x) => !active.includes(x)); this.allin = Array(6).fill(false); this.acted = Array(6).fill(false);
     this.log = []; this.done = false; this.winners = null;
-    const sb = this.seatAt(1), bbs = this.seatAt(2);
+    const sb = this.m === 2 ? this.order[0] : this.order[1], bbs = this.m === 2 ? this.order[1] : this.order[2];
     this._post(sb, bb / 2); this._post(bbs, bb);
     this.current = bb; this.lastRaise = bb; this.raises = 0; this.raiser = bbs; this.opener = null;
-    this.toAct = this.seatAt(3);
+    this.toAct = this.order[(this.order.indexOf(bbs) + 1) % this.m];
     this._advanceToLive();
   }
-  seatAt(posIdx) { return (this.button + posIdx) % 6; }
-  posOf(seat) { return POS_NAMES[(seat - this.button + 6) % 6]; }
+  seatAt(posIdx) { return this.order[posIdx % this.m]; }
+  posOf(seat) { const i = this.order.indexOf(seat); return this.m === 6 ? POS_NAMES[i] : this.m === 3 ? ['BTN', 'SB', 'BB'][i] : ['BTN', 'BB'][i]; }
   get pot() { return this.total.reduce((a, b) => a + b, 0); }
   live() { return [...Array(6).keys()].filter((s) => !this.folded[s]); }
   canAct(s) { return !this.folded[s] && !this.allin[s]; }
