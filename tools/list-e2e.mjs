@@ -46,4 +46,27 @@ await go('#/play/count', 900);
 await page.evaluate(() => document.querySelector('#m2').click()); await page.waitForTimeout(200);
 t = await T(); ok(/Distracted/.test(t) && /Hear it/.test(t), 'speed trainer has conditions');
 
+// 3. baccarat: roads, ladder, trap, chooser
+await go('#/play/baccarat/roads', 1000); t = await T();
+ok(/Big Eye Boy/.test(t) && /Cockroach Pig/.test(t) && /Dragon/.test(t), 'roads lesson renders');
+await go('#/play/baccarat/roadsdrill', 1000);
+for (let i = 0; i < 15; i++) {
+  await page.evaluate((i) => { const b = [...document.querySelectorAll('#opts button')]; b[i % b.length]?.click(); }, i);
+  await page.waitForTimeout(60);
+  await click('#nx'); await page.waitForTimeout(60);
+}
+t = await T(); ok(/Accuracy/i.test(t), 'roads drill completes 15 questions');
+await go('#/play/baccarat/ladder', 1000);
+for (let i = 0; i < 5; i++) { await page.evaluate(() => document.querySelector('#opts button')?.click()); await page.waitForTimeout(450); }
+t = await T(); ok(/Speed ladder/.test(t), 'ladder runs');
+await go('#/play/baccarat/trap', 1000);
+for (let i = 0; i < 30; i++) {
+  await page.evaluate((i) => { const b = [...document.querySelectorAll('.act')].filter((x) => !x.disabled); (b[i % 3] || b[0])?.click(); }, i);
+  await page.waitForFunction(() => [...document.querySelectorAll('.act')].some((x) => !x.disabled) || /Took the bait/i.test(document.querySelector('#screen').innerText), null, { timeout: 5000 }).catch(() => {});
+}
+t = await T(); ok(/Took the bait/i.test(t) && /Expected cost/i.test(t), 'trap finishes with a summary');
+await go('#/play/baccarat/chooser', 1000); t = await T();
+ok(/Which table/.test(t) && /Verdict/.test(t) && /cheaper|same/.test(t), 'chooser compares tables');
+await go('#/play/baccarat', 1000); t = await T(); ok(/Temptation trap/.test(t) && /Speed ladder/.test(t) && /Reading the roads/.test(t), 'baccarat hub links the new pages');
+
 await done();

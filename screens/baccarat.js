@@ -8,6 +8,7 @@ import { longestStreak } from '../app/roads.js';
 import { store } from '../app/store.js';
 import { cue, confetti } from '../app/feel.js';
 import { rec } from '../app/weak.js';
+import { roadsLesson, roadsDrill, ladder, trap, chooser } from './baccextra.js';
 import { say } from '../app/voice.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -27,6 +28,11 @@ export default async function baccarat(el, parts, ctx) {
   if (sub === 'practice') return baccaratTable(el, ctx, 'practice');
   if (sub === 'truth') return truth(el, ctx);
   if (sub === 'strategy') return strategy(el, ctx);
+  if (sub === 'roads') return roadsLesson(el, ctx);
+  if (sub === 'roadsdrill') return roadsDrill(el, ctx);
+  if (sub === 'ladder') return ladder(el, ctx, DRILLS);
+  if (sub === 'trap') return trap(el, ctx);
+  if (sub === 'chooser') return chooser(el, ctx);
   return hub(el, ctx);
 }
 
@@ -49,10 +55,16 @@ function hub(el, ctx) {
     ${row('winner', 'Call the winner', 'Finished hands: Player, Banker or Tie?')}
     ${row('payout', 'What do you collect?', 'Commission, ties and pairs: work out the net on a bet.')}
     ${row('edge', 'Which bet costs least?', 'House edge for each bet, on your table rules.')}
+    <a class="card link" href="#/play/baccarat/ladder"><h3>Speed ladder <span class="dim num" style="float:right">${(ctx.profile.bacc.ladder || {}).best ? 'level ' + ctx.profile.bacc.ladder.best : ''}</span></h3><div class="small dim">The draw rules against a clock that tightens as you climb. Level 8 is real dealer speed.</div></a>
+    <h2>Scoreboards</h2>
+    <a class="card link" href="#/play/baccarat/roads"><h3>Reading the roads</h3><div class="small dim">Bead plate, Big Road, and the Big Eye Boy, Small Road and Cockroach Pig, explained and marked.</div></a>
+    <a class="card link" href="#/play/baccarat/roadsdrill"><h3>Road-reading drill</h3><div class="small dim">Predict the next mark, count streaks and name patterns. Reading is a skill; predicting is not.</div></a>
     <h2>Practice and play</h2>
     <a class="card link" href="#/play/baccarat/practice"><h3>Practice table</h3><div class="small dim">No money. The dealer deals four cards and you call every draw before it happens, with the rule explained after each answer.</div></a>
     <a class="card link" href="#/play/baccarat/table"><h3>Table</h3><div class="small dim">A dealer, a shoe, a bankroll and a scoreboard. Place bets and watch the rules play out. Your loss limit is enforced.</div></a>
     <a class="card link ok" href="#/play/baccarat/strategy"><h3>Strategy, money and tips</h3><div class="small dim">Which table to choose, what each side bet really costs, an expected-loss calculator, and a lab that simulates Martingale, Paroli, D’Alembert, 1-3-2-6 and Fibonacci against flat betting.</div></a>
+    <a class="card link" href="#/play/baccarat/trap"><h3>Temptation trap</h3><div class="small dim">Thirty hands, each with a convincing reason to make a bad bet. See what taking the bait costs.</div></a>
+    <a class="card link" href="#/play/baccarat/chooser"><h3>Which table?</h3><div class="small dim">Compare two tables by commission, Tie and pair payouts. “No commission” is not always cheaper.</div></a>
     <a class="card link" href="#/play/baccarat/truth"><h3>Do patterns work?</h3><div class="small dim">Simulate 20,000 hands and test “follow the streak”, “bet against it” and the rest.</div></a>
     <div class="card"><b>Honest reminder.</b> Every baccarat bet has a house edge. The lowest is Banker at about 1.06%. The Tie and the Pairs cost 10–14% and should be avoided. No scoreboard pattern changes that.</div>`;
   const set = (key, fn) => el.querySelectorAll(`#${key} button`).forEach((b) => b.onclick = async () => { fn(b.dataset.v); await ctx.save(); hub(el, ctx); });

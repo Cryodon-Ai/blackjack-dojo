@@ -1,5 +1,5 @@
 // SVG renderers for the baccarat scoreboards (bead plate and big road).
-import { beadPlate, bigRoad, roadWidth, ROWS } from '../app/roads.js';
+import { beadPlate, bigRoad, roadWidth, ROWS, derivedCells } from '../app/roads.js';
 
 const COL = { banker: '#d8334a', player: '#2f6bd8', tie: '#2fbf5a' };
 const LET = { banker: 'B', player: 'P', tie: 'T' };
@@ -26,5 +26,18 @@ export function bigHTML(rounds) {
   return wrap(roadWidth(cells), cells.map((c) => {
     const x = 2 + c.col * CELL + CELL / 2, y = 2 + c.row * CELL + CELL / 2;
     return `<circle cx="${x}" cy="${y}" r="8" fill="none" stroke="${COL[c.winner]}" stroke-width="2.6"/>` + (c.ties ? `<path d="M${x - 6} ${y + 6}L${x + 6} ${y - 6}" stroke="${COL.tie}" stroke-width="2"/>` : '');
+  }).join(''));
+}
+
+// Big Road from plain results ('player' | 'banker' | 'tie'), and the three derived roads (red / blue marks).
+export function bigFromResults(results) { return bigHTML(results.map((w) => ({ winner: w }))); }
+const MARK = { r: '#d8334a', b: '#2f6bd8' };
+export function derivedHTML(marks, kind) {
+  const cells = derivedCells(marks);
+  return wrap(roadWidth(cells), cells.map((c) => {
+    const x = 2 + c.col * CELL + CELL / 2, y = 2 + c.row * CELL + CELL / 2, col = MARK[c.mark];
+    if (kind === 'bigEye') return `<circle cx="${x}" cy="${y}" r="7" fill="none" stroke="${col}" stroke-width="2.4"/>`;
+    if (kind === 'small') return `<circle cx="${x}" cy="${y}" r="5.5" fill="${col}"/>`;
+    return `<path d="M${x - 6} ${y + 6}L${x + 6} ${y - 6}" stroke="${col}" stroke-width="2.6" stroke-linecap="round"/>`;
   }).join(''));
 }
