@@ -9,7 +9,8 @@
 
 import { countingTable } from '../games/countpro.js';
 import { countSystems } from '../games/countsystems.js';
-import { INDEX_RULES, activeRules, idxOf, tierName, RAMPS, rampUnits, edgeAtTC } from '../engine/indices.js';
+import { bankroll, scout } from './countextra.js';
+import { INSURANCE_INDEX, INDEX_RULES, activeRules, idxOf, publishedIdx, chosenIdx, solvedActive, MAX_DRIFT, tierName, RAMPS, rampUnits, edgeAtTC } from '../engine/indices.js';
 import { cardSVG, makeCard } from '../ui/cards.js';
 import { engine } from '../app/engine-client.js';
 import { describeRules } from '../app/presets.js';
@@ -21,7 +22,8 @@ const sgn = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n);
 const rnd = (n) => Math.floor(Math.random() * n);
 const pick = (a) => a[rnd(a.length)];
 const upL = (u) => (u === 1 ? 'A' : String(u));
-const ACT = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split', R: 'Surrender' };
+const ACT = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split', R: 'Surrender', I: 'Take insurance', N: 'Decline insurance' };
+const INS_RULE = { id: 'INS', tier: 'i18', kind: 'ins', up: 1, play: 'I', below: 'N', label: 'Insurance vs A' };
 const back = (to = '#/play/counting', label = 'Counting Pro') => `<div class="topbar"><a class="back" href="${to}">‹ ${label}</a></div>`;
 const link = (href, text) => `<a class="btn block" style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:8px" href="${href}">${text}</a>`;
 
@@ -34,6 +36,9 @@ export default async function counting(el, parts, ctx) {
   if (sub === 'systems') return countSystems(el, ctx, 'systems');
   if (sub === 'aces') return countSystems(el, ctx, 'aces');
   if (sub === 'decks') return countSystems(el, ctx, 'decks');
+  if (sub === 'bankroll') return bankroll(el, ctx);
+  if (sub === 'scout') return scout(el, ctx);
+  if (sub === 'tables') return solvedTables(el, ctx);
   if (sub === 'sim') return simScreen(el, ctx);
   return hub(el, ctx);
 }
@@ -47,6 +52,9 @@ function hub(el, ctx) {
     <a class="card link ok" href="#/play/counting/learn"><h3>The roadmap</h3><div class="small dim">What to learn first, what to ignore, how to practise, and what counting can and cannot do at the games you actually play.</div></a>
     <h2>Drills</h2>
     <a class="card link" href="#/play/counting/dev"><h3>Index plays <span class="dim num" style="float:right">${pc(d)}</span></h3><div class="small dim">The Illustrious 18 and Fab 4: given the hand and the true count, what is the play? Learn them in order of value.</div></a>
+    <a class="card link" href="#/play/counting/tables"><h3>Index tables for my rules</h3><div class="small dim">The published numbers assume 6 decks. Solve them exactly for your table, then use them everywhere in the app.</div></a>
+    <a class="card link" href="#/play/counting/bankroll"><h3>Bankroll &amp; Kelly</h3><div class="small dim">How big a bankroll your spread needs, Kelly bet sizes per count, risk of ruin and hourly swings.</div></a>
+    <a class="card link" href="#/play/counting/scout"><h3>Table scout</h3><div class="small dim">Rate the tables you actually see: rules, penetration and shuffle type, with a verdict on whether counting can pay there.</div></a>
     <a class="card link" href="#/play/counting/ramp"><h3>Bet sizing <span class="dim num" style="float:right">${pc(r)}</span></h3><div class="small dim">True count in, bet out. The ramp is what actually makes the money; practise it until it is automatic.</div></a>
     <a class="card link" href="#/play/count"><h3>Count trainer</h3><div class="small dim">Card values, speed counting, a full-deck run, true-count conversion.</div></a>
     <a class="card link" href="#/play/counting/systems"><h3>Other counting systems</h3><div class="small dim">KO, Hi-Opt I, Zen, Omega II and Wong Halves: values, deck runs, and how each trades ease for accuracy.</div></a>
@@ -84,20 +92,24 @@ function learn(el) {
 function devDrill(el, ctx) {
   const st = (ctx.profile.counting ||= {});
   const dv = (st.devCards ||= {});                    // rule id -> { n, c }
-  let tiers = ['i18'], rules = ctx.rules, q = null, n = 0, ok = 0, streak = 0, busy = false;
+  let tiers = ['i18'], set = 'i18', rules = ctx.rules, q = null, n = 0, ok = 0, streak = 0, busy = false;
 
-  const pool = () => activeRules(rules, { tiers });
+  const pool = () => {
+    if (set === 'neg') return [...activeRules(rules, { tiers: ['i18', 'fab4', 'x'] }).filter((r) => idxOf(r, rules) < 0), INS_RULE];
+    return [...activeRules(rules, { tiers }), INS_RULE];
+  };
   function setup() {
     const surr = rules.surrender === 'late';
     el.innerHTML = `${back()}<h1>Index plays</h1>
       <p class="dim small" style="margin-top:0">A hand, the dealer's upcard and the <b>true count</b>. Pick the play. ${describeRules(rules)}</p>
       <div class="small dim">Which set</div>
-      <div class="seg" id="t" style="margin:6px 0 10px"><button data-v="i18" class="${tiers.length === 1 && tiers[0] === 'i18' ? 'on' : ''}">Illustrious 18</button><button data-v="all" class="${tiers.length > 1 ? 'on' : ''}">+ Fab 4 &amp; extras</button></div>
+      <div class="seg" id="t" style="margin:6px 0 10px"><button data-v="i18" class="${set === 'i18' ? 'on' : ''}">Illustrious 18</button><button data-v="all" class="${set === 'all' ? 'on' : ''}">+ Fab 4 &amp; extras</button><button data-v="neg" class="${set === 'neg' ? 'on' : ''}">Negative ones</button></div>
+      ${set === 'neg' ? '<p class="small dim">The negative indices flip the other way: you stand on basic-strategy hit hands unless the count is <i>low</i>. They are the easiest to forget, because everything else on the list gets bigger as the count rises.</p>' : ''}
       ${surr ? '' : '<p class="small dim">This table has no surrender, so the Fab 4 are left out. Change the rules in the Play tab to include them.</p>'}
-      <div class="card"><b>The ${pool().length} plays in this set</b><div class="small dim" style="margin-top:6px">${pool().map((r) => `<span style="display:inline-block;margin:2px 8px 2px 0">${r.label} <b class="num">${sgn(idxOf(r, rules))}</b></span>`).join('')}</div>
+      <div class="card"><b>The ${pool().length} plays in this set</b><div class="small dim" style="margin-top:6px">${pool().map((r) => `<span style="display:inline-block;margin:2px 8px 2px 0">${r.label} <b class="num">${sgn(r === INS_RULE ? INSURANCE_INDEX : idxOf(r, rules))}</b></span>`).join('')}</div>
         <p class="small dim" style="margin-bottom:0">Make the play when the true count is <b>at or above</b> the number; below it, play basic strategy (or, for the negative ones, hit).</p></div>
       <button class="btn primary block" id="go">Start</button>`;
-    el.querySelectorAll('#t button').forEach((b) => b.onclick = () => { tiers = b.dataset.v === 'i18' ? ['i18'] : ['i18', 'fab4', 'x']; setup(); });
+    el.querySelectorAll('#t button').forEach((b) => b.onclick = () => { set = b.dataset.v; tiers = set === 'i18' ? ['i18'] : ['i18', 'fab4', 'x']; setup(); });
     el.querySelector('#go').onclick = () => { n = ok = streak = 0; next(); };
   }
 
@@ -107,7 +119,8 @@ function devDrill(el, ctx) {
     const w = list.map((r) => { const s = dv[r.id]; return s && s.n ? 1 + 3 * (1 - s.c / s.n) : 2; });
     let k = Math.random() * w.reduce((a, b) => a + b, 0), rule = list[0];
     for (let i = 0; i < list.length; i++) { k -= w[i]; if (k < 0) { rule = list[i]; break; } }
-    const idx = idxOf(rule, rules);
+    const idx = rule === INS_RULE ? INSURANCE_INDEX : idxOf(rule, rules);
+    if (rule === INS_RULE) return { rule, idx, tc: idx + pick([-3, -2, -1, 0, 0, 1, 1, 2, 3]), cards: pick([[10, 6], [9, 7], [10, 5], [8, 9], [10, 10], [7, 5], [10, 8]]), up: 1 };
     // True count near the index, often one either side, sometimes far
     const tc = idx + pick([-3, -2, -1, -1, 0, 0, 1, 1, 2, 3]);
     const cards = rule.kind === 'tt' ? [10, 10] : twoCards(rule.total);
@@ -121,8 +134,8 @@ function devDrill(el, ctx) {
 
   function next() {
     q = make(); busy = false;
-    const acts = [...new Set([q.rule.play, q.rule.below, 'H', 'S'])].filter((a) => !(a === 'D' && q.rule.play !== 'D' && false));
-    const order = ['H', 'S', 'D', 'P', 'R'].filter((a) => acts.includes(a));
+    const acts = q.rule === INS_RULE ? ['I', 'N'] : [...new Set([q.rule.play, q.rule.below, 'H', 'S'])];
+    const order = ['H', 'S', 'D', 'P', 'R', 'I', 'N'].filter((a) => acts.includes(a));
     el.innerHTML = `${back()}<div class="row" style="justify-content:flex-end"><span class="small dim num">${ok}/${n} · streak ${streak}</span></div>
       <div class="card" style="text-align:center"><div class="small dim">Dealer shows</div><div style="display:flex;justify-content:center;height:96px">${cardSVG(makeCard(q.up))}</div>
         <div class="small dim" style="margin-top:8px">You have</div><div style="display:flex;justify-content:center;height:96px">${q.cards.map((v) => cardSVG(makeCard(v))).join('')}</div>
@@ -191,7 +204,7 @@ function rampDrill(el, ctx) {
 
 // ---- does it pay? simulation ------------------------------------------------------------------------------------------
 function simScreen(el, ctx) {
-  let ramp = '1-8', pen = 0.75, dev = true, running = false;
+  let ramp = '1-8', pen = 0.75, dev = true, running = false, style = 'all';
   const rules = ctx.rules;
   function draw(res, err) {
     const fmt = (x, d = 2) => (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(d);
@@ -199,11 +212,14 @@ function simScreen(el, ctx) {
       <p class="dim small" style="margin-top:0">${describeRules(rules)}. One player, heads-up, a persistent shoe dealt to the cut card. 1,000,000 hands per run, using the same cards for a flat bettor and the counter.</p>
       <div class="small dim">Bet spread</div><div class="seg" id="r" style="margin:6px 0 10px">${Object.entries(RAMPS).map(([k, v]) => `<button data-v="${k}" class="${ramp === k ? 'on' : ''}">${v.name}</button>`).join('')}<button data-v="flat" class="${ramp === 'flat' ? 'on' : ''}">Flat</button></div>
       <div class="small dim">Penetration (shoe dealt before the shuffle)</div><div class="seg" id="p" style="margin:6px 0 10px">${[0.5, 0.65, 0.75, 0.85].map((v) => `<button data-v="${v}" class="${pen === v ? 'on' : ''}">${Math.round(v * 100)}%</button>`).join('')}</div>
+      <div class="small dim">How you play</div><div class="seg" id="w" style="margin:6px 0 10px"><button data-v="all" class="${style === 'all' ? 'on' : ''}">Every hand</button><button data-v="w2" class="${style === 'w2' ? 'on' : ''}">Back-count +2</button><button data-v="w1" class="${style === 'w1' ? 'on' : ''}">Back-count +1</button></div>
+      ${style !== 'all' ? '<p class="small dim" style="margin-top:0">Back-counting (“Wonging”): stand behind the table counting, sit down and bet when the true count reaches the entry point, leave when it drops below 0 or the shoe is shuffled. Higher edge per bet, but you play far fewer hands and it is very visible.</p>' : ''}
       <div class="small dim">Index plays</div><div class="seg" id="d" style="margin:6px 0 10px"><button data-v="1" class="${dev ? 'on' : ''}">Illustrious 18 + Fab 4</button><button data-v="0" class="${!dev ? 'on' : ''}">Basic strategy only</button></div>
       <button class="btn primary block" id="go" ${running ? 'disabled' : ''}>${running ? 'Simulating…' : 'Run simulation'}</button>
       ${err ? `<p class="bad">${err}</p>` : ''}${res ? result(res) : ''}`;
     el.querySelectorAll('#r button').forEach((b) => b.onclick = () => { ramp = b.dataset.v; draw(res); });
     el.querySelectorAll('#p button').forEach((b) => b.onclick = () => { pen = Number(b.dataset.v); draw(res); });
+    el.querySelectorAll('#w button').forEach((b) => b.onclick = () => { style = b.dataset.v; draw(res); });
     el.querySelectorAll('#d button').forEach((b) => b.onclick = () => { dev = b.dataset.v === '1'; draw(res); });
     el.querySelector('#go').onclick = run;
 
@@ -217,7 +233,7 @@ function simScreen(el, ctx) {
         <div class="row" style="gap:10px;flex-wrap:wrap"><div class="grow"><div class="small dim">Your edge</div><div class="big num ${sig}">${fmt(c.edgePct)}%</div><div class="small dim">±${ci.toFixed(2)}% (95%)</div></div>
           <div class="grow"><div class="small dim">Flat bettor, same cards and plays</div><div class="big num">${fmt(f.edgePct)}%</div></div></div>
         <p class="small"><b>${verdict}</b></p>
-        <table class="evtable"><tr><td>Average bet</td><td class="num">${r.avgUnits.toFixed(2)} units</td></tr><tr><td>Hands where you bet above the minimum</td><td class="num">${Math.round(r.pctRaised * 100)}%</td></tr><tr><td>Expected per 100 hands</td><td class="num">${fmt(per100, 1)} units</td></tr><tr><td>Std deviation per hand</td><td class="num">${c.sd.toFixed(2)} units</td></tr><tr><td>Shuffles</td><td class="num">${r.shuffles}</td></tr><tr><td>Index plays made</td><td class="num">${r.devUsed.toLocaleString()}</td></tr></table></div>
+        <table class="evtable">${r.params.wong ? `<tr><td>Rounds you actually sat in</td><td class="num">${Math.round(r.played / r.hands * 100)}%</td></tr><tr><td>Units won per 100 rounds <i>watched</i></td><td class="num">${fmt(c.perHand * 100)}</td></tr>` : ''}<tr><td>Average bet</td><td class="num">${r.avgUnits.toFixed(2)} units</td></tr><tr><td>Hands where you bet above the minimum</td><td class="num">${Math.round(r.pctRaised * 100)}%</td></tr><tr><td>Expected per 100 hands</td><td class="num">${fmt(per100, 1)} units</td></tr><tr><td>Std deviation per hand</td><td class="num">${c.sd.toFixed(2)} units</td></tr><tr><td>Shuffles</td><td class="num">${r.shuffles}</td></tr><tr><td>Index plays made</td><td class="num">${r.devUsed.toLocaleString()}</td></tr></table></div>
         <div class="card"><h3>Risk of ruin</h3><p class="small dim" style="margin-top:0">Chance of losing the whole bankroll within 20,000 hands, by bankroll size (in units of your minimum bet):</p>
           <table class="evtable">${[50, 100, 200, 400].map((b) => `<tr><td>${b} units</td><td class="num ${r.ror[b] > 0.25 ? 'bad' : r.ror[b] < 0.05 ? 'ok' : ''}">${Math.round(r.ror[b] * 100)}%</td></tr>`).join('')}</table></div>
         <div class="card"><h3>Edge by true count</h3><p class="small dim" style="margin-top:0">The flat-bet result at each true count (when the hand started), the reason the ramp works:</p>
@@ -227,10 +243,46 @@ function simScreen(el, ctx) {
   async function run() {
     running = true; draw(null);
     try {
-      const res = await engine.countSim({ rules, hands: 1000000, pen, ramp, deviations: dev, seed: (Date.now() % 100000) + 1 });
+      const res = await engine.countSim({ rules, solved: solvedActive(rules) ? await engine.cachedIdx(rules) : null, hands: 1000000, pen, ramp, deviations: dev, wong: style === 'w2' ? { enter: 2, exit: 0 } : style === 'w1' ? { enter: 1, exit: 0 } : null, seed: (Date.now() % 100000) + 1 });
       running = false; if (el.isConnected) draw(res);
     } catch (e) { running = false; if (el.isConnected) draw(null, 'Simulation failed: ' + (e.message || e)); }
   }
   draw(null);
   return () => { running = false; };
+}
+
+
+// ---- solved index tables ---------------------------------------------------------------------------------------------
+function solvedTables(el, ctx) {
+  const rules = ctx.rules;
+  let busy = false, err = '';
+  async function draw() {
+    const solved = await engine.cachedIdx(rules);
+    const on = ctx.profile.useSolvedIdx !== false && !!solved;
+    const list = activeRules(rules, { tiers: ['i18', 'fab4', 'x'] });
+    const row = (r) => {
+      const pub = publishedIdx(r, rules), sv = solved ? solved[r.id] : undefined;
+      const has = Number.isFinite(sv), diff = has ? sv - pub : 0;
+      const use = has ? chosenIdx(r, rules, sv) : pub;
+      const note = !has ? (solved ? 'no crossing' : '') : Math.abs(diff) > MAX_DRIFT ? 'kept published' : diff === 0 ? 'same' : 'changed';
+      return `<tr><td>${r.label}</td><td class="num">${sgn(pub) || '0'}</td><td class="num">${has ? (sgn(sv) || '0') : '—'}</td><td class="num ${use !== pub ? 'ok' : ''}"><b>${on ? (sgn(use) || '0') : (sgn(pub) || '0')}</b></td><td class="small dim">${on ? note : ''}</td></tr>`;
+    };
+    el.innerHTML = `${back()}<h1>Index tables for my rules</h1>
+      <p class="dim small" style="margin-top:0">${describeRules(rules)}. The published Illustrious 18 numbers come from six-deck games. This solves every index with the app's exact engine for <b>your</b> deck count, soft-17 rule, doubling and surrender, then uses those numbers in the drills, Count & Play, the simulator and the Coach.</p>
+      <button class="btn primary block" id="go" ${busy ? 'disabled' : ''}>${busy ? 'Solving… (a few seconds)' : solved ? 'Re-solve for these rules' : 'Solve for my rules'}</button>
+      ${err ? `<p class="bad">${err}</p>` : ''}
+      ${solved ? `<div class="row" style="margin:10px 0"><span class="grow small">Use solved numbers in the app</span><div class="seg" id="u"><button data-v="1" class="${on ? 'on' : ''}">On</button><button data-v="0" class="${!on ? 'on' : ''}">Off</button></div></div>` : ''}
+      <div class="card"><table class="evtable"><tr><td></td><td class="small dim">Published</td><td class="small dim">Solved</td><td class="small dim">Using</td><td></td></tr>${list.map(row).join('')}</table>
+        <p class="small dim" style="margin-bottom:0">Make the play at or above the number. The solver models a typical half-shoe composition, so it can drift from a full simulation by a point or so. If it disagrees with the published figure by more than ${MAX_DRIFT}, the app keeps the published number and says so.</p></div>`;
+    const g = el.querySelector('#go'); if (g) g.onclick = run;
+    el.querySelectorAll('#u button').forEach((b) => b.onclick = async () => { ctx.profile.useSolvedIdx = b.dataset.v === '1'; await ctx.save(); await ctx.syncSolved(); draw(); });
+  }
+  async function run() {
+    busy = true; err = ''; await draw();
+    try { await engine.solveIdx(rules); ctx.profile.useSolvedIdx = true; await ctx.save(); await ctx.syncSolved(); }
+    catch (e) { err = 'Could not solve: ' + (e.message || e); }
+    busy = false; if (el.isConnected) draw();
+  }
+  draw();
+  return () => { busy = true; };
 }

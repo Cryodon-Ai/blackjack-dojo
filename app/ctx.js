@@ -1,13 +1,19 @@
 // Shared app context: the loaded profile plus helpers every screen uses.
 import { store } from './store.js';
 import { normalizeRules } from '../engine/rules.js';
+import { setSolved } from '../engine/indices.js';
+import { engine } from './engine-client.js';
 
 export const ctx = {
   profile: null,
   async load() { this.profile = await store.getProfile(); return this.profile; },
   async save() { await store.saveProfile(this.profile); },
   get rules() { return normalizeRules(this.profile.activeRuleSet); },
-  async setRules(rules, presetId) { this.profile.activeRuleSet = { ...rules }; this.profile.activePresetId = presetId || 'custom'; await this.save(); },
+  async setRules(rules, presetId) { this.profile.activeRuleSet = { ...rules }; this.profile.activePresetId = presetId || 'custom'; await this.save(); await this.syncSolved(); },
+  // Use the index numbers solved for the active rules, if the player has solved them and not switched them off.
+  async syncSolved() {
+    try { const m = this.profile.useSolvedIdx === false ? null : await engine.cachedIdx(this.rules); setSolved(this.rules, m || null); } catch { setSolved(this.rules, null); }
+  },
   esc: (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])),
 };
 

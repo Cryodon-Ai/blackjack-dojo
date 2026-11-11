@@ -64,6 +64,7 @@ async function boot() {
   await srs.load();
   applyLook(ctx.profile.settings);
   document.documentElement.classList.toggle('cb', !!ctx.profile.settings.colorblind);
+  await ctx.syncSolved();
   startGuard(ctx);
   feltGrain();
   if (!document.getElementById('ask-fab')) { const f = document.createElement('a'); f.id = 'ask-fab'; f.href = '#/ask'; f.setAttribute('aria-label', 'Ask the coach'); f.textContent = 'Ask'; document.body.appendChild(f); }

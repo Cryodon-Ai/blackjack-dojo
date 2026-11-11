@@ -1,3 +1,4 @@
+import { rulesKey } from './rules.js';
 // Hi-Lo index plays: the Illustrious 18, the Fab 4 surrenders and a few extras.
 //
 // An index play is a decision where the correct action flips at a given TRUE count. Rule of thumb:
@@ -42,7 +43,20 @@ export const INSURANCE_INDEX = 3;
 export const insuranceTaken = (tc) => tc >= INSURANCE_INDEX;
 
 export const tierName = { i18: 'Illustrious 18', fab4: 'Fab 4 surrender', x: 'Extra' };
-export const idxOf = (rule, rules) => (rules && rules.dealerHitsSoft17 ? rule.h17 : rule.s17);
+export const publishedIdx = (rule, rules) => (rules && rules.dealerHitsSoft17 ? rule.h17 : rule.s17);
+
+// Solved overrides: index numbers computed by the exact solver for the player's own table rules.
+// Used only where the solver stays within MAX_DRIFT of the published figure (the solver's depth model is an
+// approximation, so a big disagreement keeps the published number).
+export const MAX_DRIFT = 2;
+let solvedKey = null, solvedMap = null;
+export function setSolved(rules, map) { solvedKey = map ? rulesKey(rules) : null; solvedMap = map || null; }
+export const solvedActive = (rules) => !!solvedMap && solvedKey === rulesKey(rules);
+export function chosenIdx(rule, rules, solved) {
+  const pub = publishedIdx(rule, rules);
+  return Number.isFinite(solved) && Math.abs(solved - pub) <= MAX_DRIFT ? solved : pub;
+}
+export const idxOf = (rule, rules) => (solvedActive(rules) ? chosenIdx(rule, rules, solvedMap[rule.id]) : publishedIdx(rule, rules));
 const upL = (u) => (u === 1 ? 'A' : String(u));
 export const describe = (rule, rules) => {
   const i = idxOf(rule, rules), s = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0');

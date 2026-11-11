@@ -5,7 +5,7 @@
 import { Round } from './round.js';
 import { normalizeRules } from './rules.js';
 import { makePolicy, mulberry32 } from './sim.js';
-import { indexPlay, insuranceTaken, rampUnits, RAMPS } from './indices.js';
+import { indexPlay, insuranceTaken, rampUnits, RAMPS, setSolved } from './indices.js';
 
 const HILO = [0, -1, 1, 1, 1, 1, 1, 0, 0, 0, -1];
 const policies = new Map();
@@ -42,19 +42,28 @@ class CountShoe {
 // Returns stats for the COUNTER and for a flat 1-unit bettor on the same rounds.
 export function runCountSim(params) {
   const rules = normalizeRules({ ...params.rules, decks: params.rules.decks });
+  setSolved(rules, params.solved || null);
   const policy = policyFor(rules);
   const rand = mulberry32(params.seed || 1);
   const shoe = new CountShoe(rules.decks, params.pen ?? 0.75, rand);
   const ramp = params.ramp || '1-8', dev = params.deviations !== false, n = params.hands;
   const flatOnly = params.ramp === 'flat';
+  const wong = params.wong || null;           // back-counting: { enter, exit } true counts; sit out until the count says go
+  let seated = false, played = 0;
   let cNet = 0, cSq = 0, cWag = 0, fNet = 0, fSq = 0, fWag = 0, sumUnits = 0, handsHigh = 0, shuffles = 0;
   const byTC = {};       // floored TC -> { n, net(unit-bet) }
   const nets = [];       // per-round counter nets (for the risk-of-ruin sample)
   let devUsed = 0, insTaken = 0;
   for (let i = 0; i < n; i++) {
-    if (shoe.needShuffle()) { shoe.shuffle(); shuffles++; }
+    if (shoe.needShuffle()) { shoe.shuffle(); shuffles++; seated = false; }
     const tcBefore = shoe.tc, ftc = Math.floor(tcBefore);
-    const units = flatOnly ? 1 : rampUnits(ramp, tcBefore);
+    let units = flatOnly ? 1 : rampUnits(ramp, tcBefore);
+    if (wong) {
+      if (!seated && tcBefore >= wong.enter) seated = true;
+      else if (seated && tcBefore < wong.exit) seated = false;
+      units = seated ? Math.max(1, units) : 0;     // out of the game, the round is still dealt (cards are seen) but nothing is wagered
+      if (units) played++;
+    }
     const r = new Round(rules, () => shoe.draw()).deal();
     let insNet = 0;
     if (r.up.v === 1 && dev && insuranceTaken(tcBefore)) { insNet = r.dealerBJ ? 1 : -0.5; insTaken++; }
@@ -85,7 +94,7 @@ export function runCountSim(params) {
   const mean = cNet / n, sd = Math.sqrt(Math.max(0, cSq / n - mean * mean));
   const fmean = fNet / n, fsd = Math.sqrt(Math.max(0, fSq / n - fmean * fmean));
   return {
-    hands: n, shuffles, avgUnits: sumUnits / n, pctRaised: handsHigh / n,
+    hands: n, played: wong ? played : n, shuffles, avgUnits: sumUnits / n, pctRaised: handsHigh / n,
     counter: { net: cNet, perHand: mean, sd, edgePct: cWag ? cNet / cWag * 100 : 0, se: sd / Math.sqrt(n) },
     flat: { net: fNet, perHand: fmean, sd: fsd, edgePct: fWag ? fNet / fWag * 100 : 0, se: fsd / Math.sqrt(n) },
     byTC, devUsed, insTaken, nets,
@@ -114,7 +123,7 @@ export function countSimReport(params) {
   const r = runCountSim(params);
   const nets = r.nets; delete r.nets;
   r.ror = {};
-  for (const b of [50, 100, 200, 400]) r.ror[b] = riskOfRuin(nets, b, 20000, 300, 9).ruin;
-  r.params = { ramp: params.ramp, pen: params.pen, deviations: params.deviations !== false, decks: params.rules.decks };
+  for (const b of (params.bankrolls || [50, 100, 200, 400])) r.ror[b] = riskOfRuin(nets, b, 20000, 300, 9).ruin;
+  r.params = { wong: params.wong || null, ramp: params.ramp, pen: params.pen, deviations: params.deviations !== false, decks: params.rules.decks };
   return r;
 }

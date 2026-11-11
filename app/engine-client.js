@@ -53,6 +53,7 @@ async function call(op, payload) {
   if (op === 'decide') return d.s.decideResult(payload.rules, payload.cards, payload.up);
   if (op === 'dealer') return d.m.dealerTable(payload.rules, payload.up);
   if (op === 'edge') return new d.e.Solver(payload.rules).houseEdge();
+  if (op === 'solveidx') return (await import('../engine/indexsolve.js')).solveIndices(payload.rules, {});
   if (op === 'countsim') return (await import('../engine/countsim.js')).countSimReport(payload.params);
   throw new Error('unknown op');
 }
@@ -92,6 +93,26 @@ export const engine = {
     store.cacheSet(`${ENGINE_VERSION}|${k}`, r);
     return r;
   },
+
+  // Hi-Lo index numbers solved for these exact rules (cached forever per engine version + rules).
+  async solveIdx(rules) {
+    const k = `idx|${rulesKey(rules)}`;
+    if (mem.has(k)) return mem.get(k);
+    const cached = await store.cacheGet(`${ENGINE_VERSION}|${k}`);
+    if (cached) { mem.set(k, cached); return cached; }
+    const r = await call('solveidx', { rules: normalizeRules(rules) });
+    mem.set(k, r);
+    store.cacheSet(`${ENGINE_VERSION}|${k}`, r);
+    return r;
+  },
+  async cachedIdx(rules) {
+    const k = `idx|${rulesKey(rules)}`;
+    if (mem.has(k)) return mem.get(k);
+    const c = await store.cacheGet(`${ENGINE_VERSION}|${k}`);
+    if (c) mem.set(k, c);
+    return c || null;
+  },
+  peekIdx(rules) { return mem.get(`idx|${rulesKey(rules)}`); },
 
   async countSim(params) { return call('countsim', { params }); },
 

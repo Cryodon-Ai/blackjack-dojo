@@ -20,8 +20,8 @@ function freshDeck(n = 1) {
 }
 
 export function countTrainer(el, ctx) {
-  let timer = null, stopped = false;
-  const stop = () => { stopped = true; clearTimeout(timer); document.getElementById('app').classList.remove('focus'); };
+  let timer = null, stopped = false, audioStop = null;
+  const stop = () => { stopped = true; clearTimeout(timer); if (audioStop) audioStop(); document.getElementById('app').classList.remove('focus'); };
   const best = () => (ctx.profile.bests = ctx.profile.bests || {});
 
   function hub() {
@@ -64,23 +64,47 @@ export function countTrainer(el, ctx) {
     el.innerHTML = `<div class="topbar"><a class="back" href="#" id="x">‹ Back</a></div><h1>Speed count</h1>
       <div class="small dim">Speed (seconds per card)</div><div class="seg" id="sp" style="margin:6px 0 12px">${[1.5, 1, 0.7, 0.5].map((v, i) => `<button data-v="${v}" class="${i === 1 ? 'on' : ''}">${v}</button>`).join('')}</div>
       <div class="small dim">Cards</div><div class="seg" id="nc" style="margin:6px 0 12px">${[15, 25, 40].map((v, i) => `<button data-v="${v}" class="${i === 1 ? 'on' : ''}">${v}</button>`).join('')}</div>
+      <div class="small dim">Conditions</div><div class="seg" id="md" style="margin:6px 0 4px"><button data-v="look" class="on">Quiet</button><button data-v="noise" title="casino noise + questions to answer">Distracted</button><button data-v="hear">Hear it</button></div>
+      <p class="small dim" id="mdn" style="margin-top:0">Cards are shown on screen.</p>
       <button class="btn primary block" id="go">Start</button>`;
     el.querySelector('#x').onclick = (e) => { e.preventDefault(); hub(); };
+    const NOTE = { look: 'Cards are shown on screen.', noise: 'Casino noise plays and the “dealer” or a “waitress” interrupts: tap the question within two seconds <i>without losing the count</i>.', hear: 'Cards are spoken aloud, not shown. Listen and count (turn the volume up; works with the phone locked to the screen).' };
     const pick = (id) => el.querySelectorAll(`#${id} button`).forEach((b) => b.onclick = () => { el.querySelectorAll(`#${id} button`).forEach((x) => x.classList.remove('on')); b.classList.add('on'); });
-    pick('sp'); pick('nc');
-    el.querySelector('#go').onclick = () => speed(Number(el.querySelector('#sp .on').dataset.v), Number(el.querySelector('#nc .on').dataset.v));
+    pick('sp'); pick('nc'); pick('md');
+    el.querySelectorAll('#md button').forEach((b) => b.addEventListener('click', () => { el.querySelector('#mdn').innerHTML = NOTE[b.dataset.v]; }));
+    el.querySelector('#go').onclick = () => speed(Number(el.querySelector('#sp .on').dataset.v), Number(el.querySelector('#nc .on').dataset.v), el.querySelector('#md .on').dataset.v);
   }
 
-  function speed(sec, count) {
+  const QUESTIONS = ['“Hit or stand for you, sir?”', '“Can I get you a drink?”', '“What’s your name again?”', '“Whose turn is it?”', '“Is this seat taken?”', '“Colour up your chips?”'];
+  function noiseStart() {   // low casino-ish murmur: filtered noise (Web Audio); silent if unsupported
+    try {
+      const A = new (window.AudioContext || window.webkitAudioContext)(), len = A.sampleRate * 2, buf = A.createBuffer(1, len, A.sampleRate), d = buf.getChannelData(0);
+      let last = 0; for (let k = 0; k < len; k++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[k] = last * 3.5; }
+      const src = A.createBufferSource(); src.buffer = buf; src.loop = true;
+      const f = A.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 700; const g = A.createGain(); g.gain.value = 0.35;
+      src.connect(f); f.connect(g); g.connect(A.destination); src.start();
+      return () => { try { src.stop(); A.close(); } catch { /* ignore */ } };
+    } catch { return () => {}; }
+  }
+  const spoken = (c) => ({ A: 'ace', J: 'jack', Q: 'queen', K: 'king' }[c.label] || c.label);
+
+  function speed(sec, count, mode = 'look') {
     const cards = freshDeck(2).slice(0, count);
     document.getElementById('app').classList.add('focus');
-    let i = 0, run = 0;
+    let i = 0, run = 0, asked = 0, answered = 0, stopNoise = mode === 'noise' ? noiseStart() : () => {}, openQ = null;
+    const endAudio = () => { stopNoise(); stopNoise = () => {}; try { speechSynthesis.cancel(); } catch { /* ignore */ } };
+    audioStop = endAudio;
     const step = () => {
-      if (stopped) return;
-      if (i >= cards.length) return finish();
+      if (stopped) return endAudio();
+      if (i >= cards.length) { endAudio(); return finish(); }
       const c = cards[i++]; run += hiLo(c.v);
-      el.innerHTML = `<div class="topbar"><span class="small dim num">${i}/${cards.length}</span></div><div style="display:flex;justify-content:center;margin:40px 0;height:150px">${cardSVG(c, { cls: 'deal' })}</div>`;
-      timer = setTimeout(step, sec * 1000);
+      let q = '';
+      if (mode === 'noise' && i > 2 && Math.random() < 0.22) { asked++; openQ = asked; q = `<button class="btn" id="dq" style="display:block;margin:0 auto">${QUESTIONS[rnd(QUESTIONS.length)]} — tap to answer</button>`; }
+      const face = mode === 'hear' ? '<div class="big" style="font-size:64px">🔊</div>' : cardSVG(c, { cls: 'deal' });
+      el.innerHTML = `<div class="topbar"><span class="small dim num">${i}/${cards.length}</span></div><div style="display:flex;justify-content:center;margin:40px 0;height:150px;align-items:center">${face}</div>${q}`;
+      if (mode === 'hear') { try { const u = new SpeechSynthesisUtterance(spoken(c)); u.rate = Math.min(2, 1.1 / Math.max(0.5, sec) + 0.4); speechSynthesis.cancel(); speechSynthesis.speak(u); } catch { /* ignore */ } }
+      const b = el.querySelector('#dq'); if (b) { const mine = openQ; b.onclick = () => { if (openQ === mine) { answered++; b.disabled = true; b.textContent = 'Answered'; } }; }
+      timer = setTimeout(step, Math.max(sec, q ? 2 : sec) * 1000);
     };
     const finish = () => {
       let g = 0;
@@ -91,9 +115,9 @@ export function countTrainer(el, ctx) {
           const ok = g === run, b = best();
           b.countRunCur = ok ? (b.countRunCur || 0) + 1 : 0; b.countRun = Math.max(b.countRun || 0, b.countRunCur); ctx.save();
           document.getElementById('app').classList.remove('focus');
-          el.innerHTML = `<h1 class="${ok ? 'ok' : 'bad'}">${ok ? 'Correct' : 'Off by ' + Math.abs(g - run)}</h1><p>The count was <b class="num">${sgn(run) || '0'}</b>${ok ? '' : `; you said <b class="num">${sgn(g) || '0'}</b>`}. ${count} cards at ${sec}s each.</p>
+          el.innerHTML = `<h1 class="${ok ? 'ok' : 'bad'}">${ok ? 'Correct' : 'Off by ' + Math.abs(g - run)}</h1><p>The count was <b class="num">${sgn(run) || '0'}</b>${ok ? '' : `; you said <b class="num">${sgn(g) || '0'}</b>`}. ${count} cards at ${sec}s each.${asked ? ` Interruptions answered: <b>${answered}/${asked}</b>.` : ''}</p>
             <button class="btn primary block" id="again">Again</button><div class="gap"></div><button class="btn ghost block" id="back">Back</button>`;
-          el.querySelector('#again').onclick = () => speed(sec, count); el.querySelector('#back').onclick = hub;
+          el.querySelector('#again').onclick = () => speed(sec, count, mode); el.querySelector('#back').onclick = hub;
         };
       };
       draw();

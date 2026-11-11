@@ -3,6 +3,7 @@ import { cellResult, decideResult, chartRows } from './strategy.js';
 import { dealerTable } from './sim.js';
 import { Solver } from './ev.js';
 import { countSimReport } from './countsim.js';
+import { solveIndices } from './indexsolve.js';
 import { UPCARDS } from './rules.js';
 
 const HIGH = [], LOW = [];
@@ -14,6 +15,7 @@ function handle(m) {
     case 'decide': return decideResult(m.rules, m.cards, m.up);
     case 'dealer': return dealerTable(m.rules, m.up);
     case 'countsim': return countSimReport(m.params);
+    case 'solveidx': return solveIndices(m.rules, {});
     case 'edge': return new Solver(m.rules).houseEdge();
     default: throw new Error('unknown op ' + m.op);
   }
