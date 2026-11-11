@@ -361,3 +361,9 @@ html.cb { --ok: #4aa3ff; --bad: #ffb020; --due: #c9a0ff; }
 #ask-fab { position: fixed; right: 14px; bottom: calc(var(--tab-h, 56px) + var(--safe-b, 0px) + 12px); z-index: 40; background: var(--info); color: #001028; font-weight: 800; padding: 10px 16px; border-radius: 22px; text-decoration: none; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
 body:has(#app.focus) #ask-fab { display: none; }
 @media print { #ask-fab, #plan-bar { display: none !important; } }
+
+/* iPhone: form controls under 16px make Safari zoom the page on focus; keep taps at a comfortable size */
+input, select, textarea { font-size: 16px; }
+.seg button { min-width: 36px; padding-left: 6px; padding-right: 6px; }
+.vpm-pick { min-height: 48px; }
+#shoebtn { min-height: 36px !important; }

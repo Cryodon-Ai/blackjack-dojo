@@ -249,7 +249,7 @@ function tableEdges(t) {
   return { banker, player: -base.player, tie: -base.tie, pair: -base.pair };
 }
 export function chooser(el, ctx) {
-  const st = (ctx.profile.bacc.chooser ||= { A: { variant: 'standard', decks: 8, tie: 8, pair: 11 }, B: { variant: 'ez', decks: 8, tie: 9, pair: 11 }, bet: 50, hph: 70 });
+  const st = ((ctx.profile.bacc ||= {}).chooser ||= { A: { variant: 'standard', decks: 8, tie: 8, pair: 11 }, B: { variant: 'ez', decks: 8, tie: 9, pair: 11 }, bet: 50, hph: 70 });
   function draw() {
     const eA = tableEdges(st.A), eB = tableEdges(st.B);
     const cost = (e) => Math.min(e.banker, e.player);
