@@ -99,4 +99,17 @@ ok(await runQuiz('#/play/poker/lab/stats'.replace('stats','stats'), 0) || true, 
 await go('#/play/poker/lab/review', 900); ok(/Hand review/.test(await T()), 'review list');
 await go('#/play/poker/lab/tilt', 900); await click('#ck'); await page.waitForTimeout(200); ok(/on tilt/i.test(await T()), 'tilt self-check');
 
+// 5. three card poker
+await go('#/play/threecard', 900); t = await T(); ok(/Three Card Poker/.test(t) && /Play or fold/.test(t) && /What it costs/.test(t), 'tcp hub');
+await go('#/play/threecard/learn', 900); ok(/straight beats a flush/i.test(await T()) && /Q-6-4/.test(await T()), 'tcp learn');
+ok(await runQuiz('#/play/threecard/drill', 15), 'tcp play/fold drill completes');
+ok(await runQuiz('#/play/threecard/rank', 12), 'tcp rank drill completes');
+await go('#/play/threecard/table', 900); await click('#go'); await page.waitForTimeout(300);
+for (let i = 0; i < 6; i++) {
+  await page.evaluate((i) => document.querySelectorAll('.act')[i % 2]?.click(), i); await page.waitForTimeout(150); await click('#nx'); await page.waitForTimeout(150); await click('#go'); await page.waitForTimeout(150);
+}
+t = await T(); ok(/Dealer/.test(t) && /\$/.test(t), 'tcp table plays hands');
+const bankTxt = await page.evaluate(() => document.querySelector('#screen').innerText);
+await go('#/play/threecard/cost', 900); t = await T(); ok(/7\.28%/.test(t) && /2\.32%/.test(t) && /3\.37%/.test(t), 'tcp cost shows exact edges');
+
 await done();

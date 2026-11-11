@@ -13,11 +13,13 @@ import { handsToday } from '../app/ctx.js';
 import baccarat from './baccarat.js';
 import counting from './counting.js';
 import poker from './poker.js';
+import threecard from './threecard.js';
 
 export default async function play(el, parts, ctx) {
   const [g] = parts;
   if (g === 'baccarat') return baccarat(el, parts.slice(1), ctx);
   if (g === 'poker') return poker(el, parts.slice(1), ctx);
+  if (g === 'threecard') return threecard(el, parts.slice(1), ctx);
   if (g === 'counting') return counting(el, parts.slice(1), ctx);
   if (g === 'practice') return practiceTable(el, ctx);
   if (g === 'count') return countTrainer(el, ctx);
@@ -45,6 +47,7 @@ async function hub(el, ctx) {
     <a class="card link" href="#/play/live"><h3>Live Table</h3><div class="small dim">Real rounds with a simulated bankroll. Every decision graded; cost of your mistakes in dollars; the stop-rule is enforced.</div></a>
     <a class="card link" href="#/play/gravity"><h3>Gravity Blackjack</h3><div class="small dim">The real ICONIC21 game: all four side bets, real multiplier drops, and Practice + Rewind on the main hand.</div></a>
     <a class="card link" href="#/play/poker"><h3>Poker</h3><div class="small dim">Texas Hold'em from zero: lessons, starting-hand charts by seat, pot-odds and equity drills, an equity calculator, and a practice table against bots with a coach that grades every decision.</div></a>
+    <a class="card link" href="#/play/threecard"><h3>Three Card Poker</h3><div class="small dim">One decision, play or fold, and the Q-6-4 rule, checked against the exact value of every hand. Plus what Pair Plus really costs.</div></a>
     <a class="card link" href="#/play/video"><h3>Video Poker</h3><div class="small dim">Jacks or Better, 9/6 pay table. Hold and draw, and the coach shows the exact cost of every hold you get wrong.</div></a>
     <a class="card link" href="#/play/baccarat"><h3>Baccarat</h3><div class="small dim">Learn the rules and the true cost of every bet, drill the draw rules, practise calling the draws, then sit at a table with a dealer and a scoreboard.</div></a>
     <a class="card link" href="#/play/trap"><h3>Trap Mode</h3><div class="small dim">Insurance, even money, multiplier-drop side bets. The only way to win is to decline every one. Best run: <b>${best.trap || 0}</b></div></a>
