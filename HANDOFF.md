@@ -6,7 +6,7 @@ Always run `node tools/stamp.js` before committing/deploying (service-worker cac
 ## Done and pushed to main
 Counting Pro, baccarat strategy page, Texas Hold'em teacher (+ merged Video Poker from another branch).
 
-## Done locally, committed, NOT pushed (as of this file)
+## Done, committed, pushed 2026-11-12
 - Coach tab (screens/coach.js, app/guard.js, app/weak.js, app/voice.js): plan, leak report, belts, session ritual,
   real results, cost of play, help, cheat cards.
 - Counting systems / ace side count / deck estimation (games/countsystems.js).
@@ -15,7 +15,7 @@ Counting Pro, baccarat strategy page, Texas Hold'em teacher (+ merged Video Poke
 Tests: tools/idx-test.mjs, poker-test.mjs, holdem-test.mjs, bacc-test.mjs, vp-test.mjs (node);
 tools/count-e2e.mjs, poker-e2e.mjs, coach-e2e.mjs, ask-e2e.mjs (headless: CHROME=... PW=... node tools/X.mjs).
 
-## Done since (2026-11-11), committed locally, NOT pushed
+## Done since (2026-11-11), pushed 2026-11-12 (0c718d0)
 Items 1-7 of the old list: solved index tables (screens/counting.js 'tables'), bankroll/Kelly + table scout (screens/countextra.js),
 back-counting sim, speed-trainer distraction/hear-it modes, insurance + negative index cards; baccarat roads/ladder/trap/chooser
 (screens/baccextra.js, app/roads.js); poker lab (engine/pokerlab.js, screens/pokerlab.js, data/hu-equity.json + hu-pushfold.json,
@@ -28,11 +28,11 @@ Study sessions: Study screen > Copy questions > answer them into data/learned.js
 
 ## Still to do
 1. Real iPhone/Safari pass (keyboard over inputs, home-screen install, audio/speech, IndexedDB in standalone). Headless Chromium only so far.
-2. Push + deploy (ask Kenneth first): node tools/stamp.js, git push.
+2. DONE 2026-11-12: pushed 0c718d0. Awaiting Kenneth's iPhone test results.
 3. Ideas not built: star/thumbs on learned answers; coach daily plan does not yet suggest the new drills (lab, roads, three card).
 4. Equity-calculator card keys are now 44px tall but still ~22px wide at 320px (13 across).
 
-## 2026-11-12 review pass (committed locally, NOT pushed)
+## 2026-11-12 review pass (pushed 2026-11-12 (0c718d0))
 - app/brain/extra.js: coach computes push/fold ("shove A5o with 10bb", "call a shove with K2o at 15bb"), MDF / bluff share by bet size,
   Three Card Poker play-or-fold for a named hand (exact EV), Kelly bet; 13 knowledge entries (EXTRA_KB: ICM, Nash push/fold, MDF, blockers,
   range advantage, tilt, roads, TCP, Pair Plus, Kelly, back-counting, penetration, solved indices). Hooked in brain.js answer() before "1. computed answers".
