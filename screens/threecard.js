@@ -49,10 +49,10 @@ function hub(el, T) {
 
 function learn(el, T) {
   const sec = (t, b) => `<div class="card"><h3>${t}</h3>${b}</div>`;
-  const rows = [['Straight flush', '3 in a row, one suit', 'A-K-Q is the best; A-2-3 the lowest'], ['Three of a kind', 'Three of the same rank', '22,100 hands: only 52'], ['Straight', '3 in a row', 'Beats a flush: there are fewer of them'], ['Flush', '3 of one suit', 'Rarer than in 5-card poker? No: more common here'], ['Pair', 'Two of the same rank', 'Kicker decides ties'], ['High card', 'Everything else', 'Compare the highest card, then the next']];
+  const rows = [['Straight flush', '3 in a row, one suit (48 of 22,100 hands)'], ['Three of a kind', 'Three of the same rank (52 hands)'], ['Straight', '3 in a row (720 hands)'], ['Flush', '3 of one suit (1,096 hands)'], ['Pair', 'Two of the same rank; the kicker decides ties (3,744 hands)'], ['High card', 'Everything else: compare the highest card, then the next (16,440 hands)']];
   el.innerHTML = `${bk()}<h1>Learn Three Card Poker</h1>
     ${sec('1. The deal', '<p class="small">You and the dealer each get three cards. You put up an <b>Ante</b> (and optionally a <b>Pair Plus</b> side bet). You look at your cards. Then:</p><ul class="small" style="padding-left:18px;margin:0"><li><b>Play</b>: bet exactly as much as your ante.</li><li><b>Fold</b>: lose the ante (the Pair Plus bet is separate and still resolves).</li></ul>')}
-    ${sec('2. Rankings, best to worst', `<table class="evtable">${rows.map(([n, d, x]) => `<tr><td><b>${n}</b><div class="small dim">${d}</div></td></tr>`).join('')}</table><p class="small dim" style="margin-bottom:0"><b>A straight beats a flush</b>: with only three cards, straights are rarer, so they rank higher. Ace can be high (Q-K-A) or low (A-2-3).</p>`)}
+    ${sec('2. Rankings, best to worst', `<table class="evtable">${rows.map(([n, d]) => `<tr><td><b>${n}</b><div class="small dim">${d}</div></td></tr>`).join('')}</table><p class="small dim" style="margin-bottom:0"><b>A straight beats a flush</b>: with only three cards, straights are rarer, so they rank higher. Ace can be high (Q-K-A) or low (A-2-3).</p>`)}
     ${sec('3. The dealer must qualify', '<p class="small">The dealer needs <b>Queen-high or better</b>. If the dealer does not qualify, your <b>Ante pays 1 to 1</b> and your <b>Play bet is returned</b> (a push). If the dealer does qualify, the better hand wins both bets, and a tie pushes both.</p>')}
     ${sec('4. The Ante bonus', '<p class="small">Paid on the ante whether or not the dealer qualifies or wins, as long as you play: <b>straight flush 5 to 1</b>, <b>three of a kind 4 to 1</b>, <b>straight 1 to 1</b>.</p>')}
     ${sec('5. Pair Plus', `<p class="small">A side bet that pays on <i>your own</i> hand alone, with the dealer ignored, even if you fold. The common pay tables:</p>
@@ -119,7 +119,6 @@ function rankDrill(el, ctx, T) {
     id: 'rank', title: 'Who wins?', total: 12, make: () => {
       for (;;) {
         const c = deal(6), p = c.slice(0, 3), d = c.slice(3), pe = evaluate3(p), de = evaluate3(d);
-        if (Math.random() < 0.5 && pe.cat === 0 && de.cat === 0 && !dealerQualifies(de) === false) continue;   // keep some non-qualifying dealer hands
         const q = dealerQualifies(de);
         const right = !q ? 'nq' : pe.score > de.score ? 'you' : pe.score < de.score ? 'dealer' : 'tie';
         const why = !q ? `The dealer has ${hand3(de)}: not Queen-high, so the dealer does not qualify. Ante pays 1 to 1 and the Play bet pushes.` : right === 'tie' ? 'Identical ranking: both bets push.' : `${right === 'you' ? 'You' : 'The dealer'} win${right === 'you' ? '' : 's'}: ${hand3(pe)} against ${hand3(de)}${pe.cat === 2 || pe.cat === 3 ? ' (remember: a straight beats a flush)' : ''}.`;
@@ -183,7 +182,8 @@ function computeEdges() {
   if (edgeCache) return edgeCache;
   const all = []; for (let a = 0; a < 52; a++) for (let b = a + 1; b < 52; b++) for (let c = b + 1; c < 52; c++) all.push([a, b, c]);
   const pp = {}; for (const [k, t] of Object.entries(PAY_TABLES)) { let s = 0; for (const h of all) s += pairPlus(evaluate3(h), t); pp[k] = -s / all.length; }
-  edgeCache = { pp, ante: 0.03373, playFreq: 0.6411 };    // Ante/Play: exact enumeration (tools/threecard-test.mjs); play frequency under Q-6-4
+  const played = all.filter((h) => shouldPlay(h)).length / all.length;      // 14,900 of 22,100 hands
+  edgeCache = { pp, ante: 0.03373, playFreq: played };    // Ante/Play edge: exact enumeration, asserted in tools/threecard-test.mjs
   return edgeCache;
 }
 function cost(el, ctx, T) {

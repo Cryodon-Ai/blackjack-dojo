@@ -44,6 +44,7 @@ for (const h of all) {
 }
 const edgeAnte = -tot / nh * 100;
 ok(Math.abs(edgeAnte - 3.37) < 0.05, `ante/play edge per ante ${edgeAnte.toFixed(3)}% vs 3.37%`);
+const played = all.filter((h) => shouldPlay(h)).length; ok(played === 14900, 'Q-6-4 plays 14,900 of 22,100 hands, got ' + played);
 console.log('ante/play edge per ante:', edgeAnte.toFixed(3) + '%');
 console.log(bad ? bad + ' problems' : 'threecard ok');
 process.exit(bad ? 1 : 0);
