@@ -14,6 +14,9 @@ import { bankerDraws, bankerReason, edges as baccEdges } from '../../engine/bacc
 import { equity, classCombos, parseRange, RFI, openAction, facingRaise, rangePct, chen, RANKS, POSITIONS, potOddsNeeded, ruleOf, strengthOrder, ALL_CLASSES, parseCards } from '../../engine/poker.js';
 import { LESSONS, GLOSSARY, TIPS } from '../../curriculum/poker.js';
 import { worst } from '../weak.js';
+import { extraAnswer, EXTRA_KB } from './extra.js';
+
+for (const k of EXTRA_KB) if (!KB.some((x) => x.id === k.id)) KB.push(k);
 
 const W2N = { ace: 1, aces: 1, one: 1, two: 2, deuce: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, tens: 10, jack: 10, queen: 10, king: 10, face: 10 };
 const PW2R = { ace: 14, king: 13, queen: 12, jack: 11, ten: 10, nine: 9, eight: 8, seven: 7, six: 6, five: 5, four: 4, three: 3, two: 2, deuce: 2 };
@@ -315,6 +318,7 @@ export async function answer(text, ctx) {
     if (changed) { const full = { ...extract(''), ...ne, n }; if (m.intent === 'bj' && ne.tc !== undefined) m.intent = 'bjIndex'; const r = await route(m.intent, full, ctx); if (r) return r; }
   }
   // 1. computed answers
+  { const r = await extraAnswer(text, e); if (r) return r; }
   if (e.pk.length >= 2 && /\bvs\b/.test(n) && !e.bj) { const r = await pokerEquity(e); r.mem = { intent: 'pkeq', ents: e }; return r; }
   if (!e.bj && e.pk.length === 1 && /(equity|chance|odds|win)/.test(n) && /random|any hand|vs/.test(n)) return vsRandom(e);
   if (!e.bj && e.pk.length >= 1 && (e.positions.length || /\b(open|raise|fold|play|call|3.?bet|limp|worth)\b/.test(n))) return pokerOpen(e);
@@ -358,6 +362,9 @@ export const STARTERS = [
   'Should I open J9s from UTG?',
   'Pot is 20, he bets 10, I have 9 outs on the flop',
   'Why is Banker the best bet in baccarat?',
+  'Shove A5o with 10bb?',
+  'MDF against a half pot bet',
+  'Three card poker Q-6-4, play or fold?',
   'Explain pot odds like I am new',
   'What should I work on?',
   'Does card counting work online?',

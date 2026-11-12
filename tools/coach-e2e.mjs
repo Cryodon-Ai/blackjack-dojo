@@ -19,7 +19,12 @@ ok(/today's plan/i.test(t) && /leak report/i.test(t) && /belts/i.test(t) && /kee
 ok(/white belt/i.test(t), 'belts show');
 // make some drill data so the plan and leak report fill in
 await go('play/poker/drills/preflop', 800);
-for (let i = 0; i < 15; i++) { await page.evaluate((i) => { const b = [...document.querySelectorAll('#opts button')]; b[i % b.length].click(); }, i); await page.waitForTimeout(40); await page.evaluate(() => document.querySelector('#nx')?.click()); await page.waitForTimeout(40); }
+// enough answers that some spot repeats (the leak report needs two tries on the same item); tolerant of the drill ending
+for (let i = 0; i < 70; i++) {
+  const had = await page.evaluate((i) => { const b = [...document.querySelectorAll('#opts button')]; if (!b.length) return false; b[i % b.length].click(); return true; }, i);
+  if (!had) { await go('play/poker/drills/preflop', 500); continue; }
+  await page.waitForTimeout(30); await page.evaluate(() => document.querySelector('#nx')?.click()); await page.waitForTimeout(30);
+}
 await page.waitForTimeout(700);
 await go('coach', 1000); t = await T(); ok(/poker/i.test(t) && /\d+%/.test(t), 'leak report reflects the drill');
 // session plan -> debrief

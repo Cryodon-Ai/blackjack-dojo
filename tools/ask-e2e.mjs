@@ -22,6 +22,11 @@ async function ask(q, re, label, wait = 25000) {
 await ask('What should I do with 16 vs 10?', /hit|surrender/i, '16 v 10');
 await ask('soft 18 against a 9', /hit/i, 'A7 v 9');
 await ask('8,8 vs 10', /split/i, '88 v 10');
+await ask('Should I shove A5o with 10bb?', /shove/i, 'push/fold A5o 10bb');
+await ask('MDF against a half pot bet', /66\.7%|67%/, 'mdf half pot');
+await ask('Three card poker Q-6-3, play or fold?', /fold/i, 'tcp Q63 folds');
+await ask('Kelly bet with a 10000 bankroll at true count +3', /\$77/, 'kelly');
+await ask('what is wonging', /count/i, 'kb wonging');
 await ask('12 vs 3 at true count +2', /stand/i, '12 v 3 at +2 stands');
 await ask('what about at -1?', /hit/i, 'follow-up changes the count');
 await ask('AKs vs QQ', /4\d(\.\d)?%|5\d(\.\d)?%/, 'AKs v QQ equity near 43%');

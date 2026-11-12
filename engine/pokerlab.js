@@ -36,7 +36,6 @@ export function solvePushFold(data, S, iters = 600) {
 // Chip EV (in bb) of an SB shove with class `label` against a calling set, at stack S.
 export function shoveEV(data, label, callSet, S) {
   const N = ALL_CLASSES.length, i = ALL_CLASSES.indexOf(label), calls = new Set(callSet);
-  let v = 0.5 - 0.5;   // relative to folding (which is -0.5): EV(shove) - EV(fold) + (-0.5) below
   let ev = 0;
   for (let j = 0; j < N; j++) ev += P[j] * (calls.has(ALL_CLASSES[j]) ? (2 * data.eq[i * N + j] / 10000 - 1) * S : 1);
   return ev;   // absolute EV of the shove, to compare with fold = -0.5
