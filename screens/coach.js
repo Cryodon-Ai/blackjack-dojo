@@ -82,6 +82,17 @@ async function home(el, ctx) {
   const bb = byGame('bacc:'); if (bb.length) tasks.push({ t: `Baccarat: ${bb[0].key} (${Math.round(bb[0].rate * 100)}%)`, s: 'Your weakest baccarat drill.', href: '#/play/baccarat', m: 4, done: ago('bacc', 1) });
   if (!ago('count-play', 7)) tasks.push({ t: 'A Count & Play session', s: 'Counting at table speed: you have not done one this week.', href: '#/play/counting/table', m: 10, done: false });
   if (!ago('poker-table', 7)) tasks.push({ t: 'A poker practice session', s: '20 hands with the coach grading.', href: '#/play/poker/table', m: 10, done: false });
+  // one newer tool a day, so the lab, roads and Three Card Poker drills get discovered
+  const NEW = [
+    ['Push / fold trainer', 'Short-stack heads-up: shove or fold, against the solved chart.', '#/play/poker/lab/pushfold'],
+    ['Three Card Poker: play or fold', 'One rule (Queen-6-4) covers the whole game.', '#/play/threecard/drill'],
+    ['Baccarat road-reading drill', 'Read the scoreboard, and see why it does not predict the next hand.', '#/play/baccarat/roadsdrill'],
+    ['MDF trainer', 'How often to defend against each bet size.', '#/play/poker/lab/mdf'],
+    ['Index plays below zero', 'The negative-count deviations most people skip.', '#/play/counting/dev'],
+    ['Board texture trainer', 'Which flops favour the raiser, which the caller.', '#/play/poker/lab/texture'],
+    ['Baccarat speed ladder', 'Third-card rules against the clock.', '#/play/baccarat/ladder'],
+  ];
+  { const d = NEW[Math.floor(Date.now() / 864e5) % NEW.length]; tasks.push({ t: `Try: ${d[0]}`, s: d[1], href: d[2], m: 4, done: false }); }
   const total = tasks.reduce((a, t) => a + t.m, 0);
   const leaks = wk.slice(0, 8);
   const worstBJ = [...srs.cache.values()].filter((c) => c.ruleSetKey === rk && c.attempts >= 3 && c.correct < c.attempts).sort((a, b) => a.correct / a.attempts - b.correct / b.attempts || (b.evLostTotal || 0) - (a.evLostTotal || 0)).slice(0, 4);

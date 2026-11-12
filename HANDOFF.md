@@ -29,9 +29,17 @@ Study sessions: Study screen > Copy questions > answer them into data/learned.js
 ## Still to do
 1. Real iPhone/Safari pass (keyboard over inputs, home-screen install, audio/speech, IndexedDB in standalone). Headless Chromium only so far.
 2. Push + deploy (ask Kenneth first): node tools/stamp.js, git push.
-3. Ideas not built: star/thumbs on learned answers, equity-calculator card picker taps are 20px on 320px phones.
-4. tools/coach-e2e.mjs 'leak report reflects the drill' is flaky (needs a repeated drill question); it fails at the original commit too.
-Tests: node tools/{idx,poker,holdem,holdem-formats,bacc,vp,lab,roads,pokerlab,threecard,memory}-test(.mjs); e2e: list-e2e (all new features), count/poker/coach/ask/bacc/lab-e2e; phone-audit.
+3. Ideas not built: star/thumbs on learned answers; coach daily plan does not yet suggest the new drills (lab, roads, three card).
+4. Equity-calculator card keys are now 44px tall but still ~22px wide at 320px (13 across).
+
+## 2026-11-12 review pass (committed locally, NOT pushed)
+- app/brain/extra.js: coach computes push/fold ("shove A5o with 10bb", "call a shove with K2o at 15bb"), MDF / bluff share by bet size,
+  Three Card Poker play-or-fold for a named hand (exact EV), Kelly bet; 13 knowledge entries (EXTRA_KB: ICM, Nash push/fold, MDF, blockers,
+  range advantage, tilt, roads, TCP, Pair Plus, Kelly, back-counting, penetration, solved indices). Hooked in brain.js answer() before "1. computed answers".
+- Three Card Poker play frequency is computed (67.4%); it was a wrong hard-coded 64.1%.
+- tools/coach-e2e.mjs made deterministic (70 guarded drill answers). tools/extra-test.mjs added.
+- Load time compared with 1404775 (headless, no service worker): no regression (all screens 0.15-0.26 s).
+Tests: node tools/{idx,poker,holdem,holdem-formats,bacc,vp,lab,roads,pokerlab,threecard,memory,extra}-test(.mjs); e2e: list-e2e (all new features), count/poker/coach/ask/bacc/lab-e2e; phone-audit.
 
 ## Gotchas
 - Headless chrome races on first page load: wait for a selector, not a fixed delay.
